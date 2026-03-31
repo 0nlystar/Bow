@@ -128,7 +128,6 @@
 
     async function syncToSheets(action, payload) {
         try {
-            // ใช้ fetch แบบส่งค่าไปเฉยๆ สำหรับ no-cors
             await fetch(SCRIPT_URL, {
                 method: 'POST',
                 mode: 'no-cors',
@@ -150,7 +149,6 @@
         const dateOnly = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
         
         const row = [timestamp, proj, name, price, dateOnly];
-        
         db[proj].invest.push({ name, price, date: dateOnly, id: timestamp });
         syncToSheets('addRecord', { type: 'Invest', row: row });
         
@@ -172,7 +170,6 @@
         const dateOnly = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
         
         const row = [timestamp, proj, "ขายสินค้า", qty, total, dateOnly];
-        
         db[proj].sales.push({ name: "ขายสินค้า", qty, price: total, date: dateOnly, id: timestamp });
         syncToSheets('addRecord', { type: 'Sales', row: row });
         
@@ -180,7 +177,6 @@
         alert("บันทึกการขายเรียบร้อย");
     }
 
-    // --- ส่วนเพิ่มสินค้าใหม่เข้าไปใน Stock ---
     function addNewItem() {
         const proj = document.getElementById('project-selector').value;
         const name = document.getElementById('new-item-name').value;
@@ -188,7 +184,6 @@
         
         const timestamp = String(Date.now());
         const newItem = { id: timestamp, name: name, qty: 0 };
-        
         db[proj].stock.push(newItem);
         syncToSheets('updateStock', { project: proj, itemName: name, newQty: 0 });
         
@@ -201,28 +196,45 @@
         const now = new Date();
         const currentProject = db[proj] || { invest: [], sales: [], stock: [] };
 
-        const formatStr = (dStr) => {
-            if (!dStr) return "";
-            const parts = String(dStr).split(/[\/\- ]/); 
-            if (parts.length < 3) return String(dStr).trim();
+        // --- แก้ไขจุดที่ 1: อัปเดตข้อความบนปุ่มเดือน ---
+        const monthBtn = document.getElementById('current-month-display');
+        if (monthBtn) {
+            monthBtn.innerText = now.toLocaleString('th-TH', { month: 'long', year: 'numeric' });
+        }
+
+        // --- แก้ไขจุดที่ 2: Logic วันที่แบบตัวเลข (รองรับ 1/4/2026) ---
+        const currD = now.getDate();
+        const currM = now.getMonth() + 1;
+        const currY = now.getFullYear();
+
+        const parseDate = (dStr) => {
+            if (!dStr) return { d: 0, m: 0, y: 0 };
+            const parts = String(dStr).split(/[\/\- ]/);
+            if (parts.length < 3) return { d: 0, m: 0, y: 0 };
             let d = parseInt(parts[0]);
             let m = parseInt(parts[1]);
             let y = parseInt(parts[2]);
-            if (y > 2500) y -= 543;
-            return `${d}/${m}/${y}`;
+            if (y > 2500) y -= 543; // แปลง พ.ศ. เป็น ค.ศ.
+            return { d, m, y };
         };
 
-        const todayMatch = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
-        const monthMatch = `/${now.getMonth() + 1}/${now.getFullYear()}`;
+        const isToday = (item) => {
+            const t = parseDate(item.date);
+            return t.d === currD && t.m === currM && t.y === currY;
+        };
 
-        const isToday = (item) => formatStr(item.date) === todayMatch;
-        const isThisMonth = (item) => formatStr(item.date).includes(monthMatch);
+        const isThisMonth = (item) => {
+            const t = parseDate(item.date);
+            return t.m === currM && t.y === currY;
+        };
 
+        // คำนวณยอด
         const mInv = (currentProject.invest || []).filter(isThisMonth).reduce((s, i) => s + (Number(i.price) || 0), 0);
         const mSale = (currentProject.sales || []).filter(isThisMonth).reduce((s, i) => s + (Number(i.price) || 0), 0);
         const dSale = (currentProject.sales || []).filter(isToday).reduce((s, i) => s + (Number(i.price) || 0), 0);
         const dQty = (currentProject.sales || []).filter(isToday).reduce((s, i) => s + (Number(i.qty) || 0), 0);
 
+        // อัปเดต UI ตัวเลข
         document.getElementById('stat-profit').innerText = `฿${(mSale - mInv).toLocaleString()}`;
         document.getElementById('daily-sales').innerText = `฿${dSale.toLocaleString()}`;
         document.getElementById('daily-qty').innerText = `${dQty} ${proj === 'tea' ? 'แก้ว' : 'ชิ้น'}`;
@@ -235,7 +247,7 @@
         };
         document.getElementById('total-wallet').innerText = `฿${(calcNet('tea') + calcNet('flower')).toLocaleString()}`;
 
-        // จัดการหน้า Stock (แก้ไขเครื่องหมาย ' ' ใน onclick)
+        // จัดการ Stock
         const invList = document.getElementById('inventory-list');
         invList.innerHTML = "";
         (currentProject.stock || []).forEach(item => {
