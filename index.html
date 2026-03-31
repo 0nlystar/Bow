@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BIZ POS - FIXED LAYOUT</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Kanit', sans-serif; background-color: #f1f5f9; padding-bottom: 100px; }
+        .page { display: none; animation: fadeIn 0.15s ease-in-out; }
+        .page.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .nav-btn.active { color: #2563eb; border-top: 4px solid #2563eb; background-color: #f8fafc; }
+    </style>
+</head>
+<body>
+
+    <div class="bg-slate-900 text-white p-6 rounded-b-[3rem] shadow-2xl sticky top-0 z-50">
+        <div class="max-w-md mx-auto space-y-4">
+            <div class="flex gap-2">
+                <select id="project-selector" onchange="updateUI()" class="flex-1 bg-white/10 p-3 rounded-2xl font-bold outline-none border border-white/20 text-sm">
+                    <option value="tea" class="text-black">🥤 ร้านชาผลไม้รวม</option>
+                    <option value="flower" class="text-black">🌸 งานลวดกำมะหยี่</option>
+                </select>
+                <div class="bg-blue-600 px-4 py-3 rounded-2xl font-bold text-[10px] flex items-center justify-center min-w-[90px]">
+                    <span id="current-month-display"></span>
+                </div>
+            </div>
+            <div class="text-center">
+                <p class="text-[9px] opacity-50 uppercase tracking-widest mb-1">กำไรสุทธิเดือนนี้</p>
+                <h1 id="stat-profit" class="text-4xl font-bold text-emerald-400">฿0</h1>
+            </div>
+        </div>
+    </div>
+
+    <main class="max-w-md mx-auto p-4">
+        
+        <section id="page-dash" class="page active space-y-4">
+            <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white p-8 rounded-[2.5rem] shadow-xl text-center">
+                <p class="text-[10px] opacity-80 uppercase font-bold mb-2 tracking-widest">ยอดขายวันนี้</p>
+                <h2 id="daily-sales" class="text-5xl font-bold mb-2">฿0</h2>
+                <p id="daily-qty" class="text-lg opacity-90">0 แก้ว/ชิ้น</p>
+            </div>
+            <div class="bg-slate-800 p-6 rounded-[2rem] text-center shadow-lg">
+                <p class="text-[10px] text-slate-400 uppercase mb-1 font-bold">รวมกำไรสุทธิทุกธุรกิจ</p>
+                <h2 id="total-wallet" class="text-2xl font-bold text-white">฿0</h2>
+            </div>
+        </section>
+
+        <section id="page-inventory" class="page space-y-4">
+            <div class="bg-white p-5 rounded-[2.5rem] shadow-sm border border-slate-200">
+                <h2 class="font-bold text-slate-800 mb-4 text-xs uppercase tracking-wider">📦 เช็คของคงเหลือ</h2>
+                <div class="flex gap-2 mb-6">
+                    <input type="text" id="new-item-name" placeholder="ชื่อของใหม่..." class="flex-1 p-3 rounded-xl bg-slate-100 border-none outline-none text-sm focus:ring-2 ring-blue-500">
+                    <button onclick="addNewItem()" class="bg-blue-600 text-white px-5 rounded-xl font-bold text-xl active:scale-90 transition-transform">+</button>
+                </div>
+                <div id="inventory-list" class="grid grid-cols-2 gap-3"></div>
+            </div>
+        </section>
+
+        <section id="page-record" class="page space-y-4">
+            <div class="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-200">
+                <h2 class="font-bold text-slate-400 mb-4 text-[10px] uppercase tracking-widest text-center">บันทึกรายจ่าย (ต้นทุน)</h2>
+                <div class="space-y-3">
+                    <input type="text" id="in-name" placeholder="ชื่อรายการ (เช่น ซื้อผลไม้)" class="w-full p-4 rounded-2xl bg-slate-50 outline-none border border-slate-100 focus:bg-white focus:ring-2 ring-slate-100 transition-all text-sm">
+                    <input type="number" id="in-price" placeholder="ระบุราคาต้นทุน" class="w-full p-4 rounded-2xl bg-slate-50 font-bold text-red-500 outline-none border border-slate-100 text-2xl focus:bg-white focus:ring-2 ring-red-100 transition-all">
+                    <button onclick="addInvest()" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold active:scale-95 transition-all shadow-lg text-sm mt-2">
+                        บันทึกรายการต้นทุน
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-emerald-50 p-6 rounded-[2.5rem] shadow-inner border border-emerald-100">
+                <h2 class="font-bold text-emerald-800 mb-4 text-[10px] uppercase tracking-widest text-center">บันทึกรายได้ (ขาย)</h2>
+                <input type="number" id="sale-price-input" placeholder="ราคาขายต่อชิ้น" class="w-full p-4 rounded-3xl bg-white mb-4 font-bold text-emerald-600 text-3xl text-center outline-none border border-emerald-200 shadow-sm focus:ring-4 ring-emerald-100 transition-all">
+                
+                <div class="flex items-center justify-between bg-white/60 p-2 rounded-[2rem] mb-6">
+                    <button onclick="setQty(-1)" class="w-14 h-14 bg-white rounded-2xl text-2xl font-bold text-slate-300 shadow-sm">-</button>
+                    <div class="text-center">
+                        <input type="number" id="qty-input" value="1" class="w-16 text-center text-4xl font-bold text-emerald-600 outline-none bg-transparent">
+                        <p class="text-[8px] text-emerald-400 font-bold uppercase">จำนวนชิ้น</p>
+                    </div>
+                    <button onclick="setQty(1)" class="w-14 h-14 bg-emerald-500 text-white rounded-2xl text-2xl font-bold shadow-lg shadow-emerald-100 active:scale-90">+</button>
+                </div>
+                <button onclick="addSale()" class="w-full bg-emerald-600 text-white py-5 rounded-[2rem] font-bold shadow-xl active:scale-95 transition-all text-xl">ยืนยันบันทึกขาย</button>
+            </div>
+        </section>
+
+        <section id="page-history" class="page space-y-3">
+            <div id="log-list" class="space-y-2"></div>
+        </section>
+    </main>
+
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around py-2 z-50 rounded-t-[2rem] shadow-2xl">
+        <button onclick="navTo('dash')" id="nav-dash" class="nav-btn active flex flex-col items-center flex-1 py-2 rounded-xl">
+            <span class="text-xl">📊</span><span class="text-[8px] font-bold uppercase mt-1">Home</span>
+        </button>
+        <button onclick="navTo('inventory')" id="nav-inventory" class="nav-btn flex flex-col items-center flex-1 py-2 rounded-xl text-slate-300">
+            <span class="text-xl">📦</span><span class="text-[8px] font-bold uppercase mt-1">Check</span>
+        </button>
+        <button onclick="navTo('record')" id="nav-record" class="nav-btn flex flex-col items-center flex-1 py-2 rounded-xl text-slate-300">
+            <span class="text-xl">➕</span><span class="text-[8px] font-bold uppercase mt-1">Add</span>
+        </button>
+        <button onclick="navTo('history')" id="nav-history" class="nav-btn flex flex-col items-center flex-1 py-2 rounded-xl text-slate-300">
+            <span class="text-xl">📜</span><span class="text-[8px] font-bold uppercase mt-1">Log</span>
+        </button>
+    </nav>
+
+    <script>
+        // *** ใส่ URL ของ Google Apps Script Web App ที่นี่ ***
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxD4sVfvkXeR1rAPdUKjZdOEdIa7VujLRPNEY_tm-PVRb_FmvAOXx276d0xfsJql_QF0g/exec";
+
+        let db = JSON.parse(localStorage.getItem('biz_pro_v5')) || { 
+            tea: { invest: [], sales: [], stock: [] },
+            flower: { invest: [], sales: [], stock: [] }
+        };
+
+        function getMonthKey() { return new Date().toLocaleString('th-TH', { month: 'long', year: 'numeric' }); }
+        function getDayKey() { return new Date().toLocaleDateString('th-TH'); }
+
+        // ฟังก์ชันส่งข้อมูลไป Sheets (เบื้องหลัง)
+        async function syncToSheets(action, payload) {
+            if (SCRIPT_URL === "วางURLที่นี่") return;
+            try {
+                fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    cache: 'no-cache',
+                    body: JSON.stringify({ action, ...payload })
+                });
+            } catch (e) { console.error("Sync Error", e); }
+        }
+
+        function navTo(pageId) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById('page-' + pageId).classList.add('active');
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active', 'text-blue-600'));
+            document.getElementById('nav-' + pageId).classList.add('active', 'text-blue-600');
+            updateUI();
+        }
+
+        function addNewItem() {
+            const proj = document.getElementById('project-selector').value;
+            const name = document.getElementById('new-item-name').value.trim();
+            if(!name) return;
+            const newItem = { id: Date.now(), name, qty: 0 };
+            db[proj].stock.push(newItem);
+            document.getElementById('new-item-name').value = '';
+            
+            syncToSheets('updateStock', { project: proj, itemName: name, newQty: 0 });
+            save();
+        }
+
+        function adjustQty(id, change) {
+            const proj = document.getElementById('project-selector').value;
+            const item = db[proj].stock.find(i => i.id === id);
+            if(item) { 
+                item.qty = Math.max(0, item.qty + change); 
+                syncToSheets('updateStock', { project: proj, itemName: item.name, newQty: item.qty });
+                save(); 
+            }
+        }
+
+        function removeItem(id) {
+            if(confirm("ลบ?")) {
+                const proj = document.getElementById('project-selector').value;
+                db[proj].stock = db[proj].stock.filter(i => i.id !== id);
+                save();
+            }
+        }
+
+        function addInvest() {
+            const proj = document.getElementById('project-selector').value;
+            const price = parseFloat(document.getElementById('in-price').value);
+            const name = document.getElementById('in-name').value || "ซื้อของ";
+            if(!price) return alert("กรุณาใส่ราคา");
+            
+            const row = [Date.now(), proj, name, price, new Date().toLocaleString('th-TH')];
+            db[proj].invest.push({ name, price, date: row[4], dayGroup: getDayKey(), monthGroup: getMonthKey(), id: row[0] });
+            
+            syncToSheets('addRecord', { type: 'Invest', row: row });
+            document.getElementById('in-name').value = ''; document.getElementById('in-price').value = '';
+            save(); alert("บันทึกต้นทุนแล้ว");
+        }
+
+        function addSale() {
+            const proj = document.getElementById('project-selector').value;
+            const price = parseFloat(document.getElementById('sale-price-input').value);
+            const qty = parseInt(document.getElementById('qty-input').value);
+            if(!price) return alert("กรุณาใส่ราคาขาย");
+            
+            const total = price * qty;
+            const row = [Date.now(), proj, "ขายสินค้า", qty, total, new Date().toLocaleString('th-TH')];
+            db[proj].sales.push({ name: "ขายสินค้า", qty, price: total, date: row[5], dayGroup: getDayKey(), monthGroup: getMonthKey(), id: row[0] });
+            
+            syncToSheets('addRecord', { type: 'Sales', row: row });
+            save(); alert("บันทึกการขายแล้ว");
+        }
+
+        function setQty(v) { document.getElementById('qty-input').value = Math.max(1, parseInt(document.getElementById('qty-input').value) + v); }
+
+        function save() { 
+            localStorage.setItem('biz_pro_v5', JSON.stringify(db)); 
+            updateUI(); 
+        }
+
+        function updateUI() {
+            const proj = document.getElementById('project-selector').value;
+            const today = getDayKey();
+            const thisMonth = getMonthKey();
+
+            const mInv = db[proj].invest.filter(i => i.monthGroup === thisMonth).reduce((s, i) => s + i.price, 0);
+            const mSale = db[proj].sales.filter(i => i.monthGroup === thisMonth).reduce((s, i) => s + i.price, 0);
+            const dSale = db[proj].sales.filter(i => i.dayGroup === today).reduce((s, i) => s + i.price, 0);
+            const dQty = db[proj].sales.filter(i => i.dayGroup === today).reduce((s, i) => s + i.qty, 0);
+            const calcTotal = (p) => db[p].sales.reduce((s, i) => s + i.price, 0) - db[p].invest.reduce((s, i) => s + i.price, 0);
+
+            document.getElementById('current-month-display').innerText = thisMonth;
+            document.getElementById('stat-profit').innerText = `฿${(mSale - mInv).toLocaleString()}`;
+            document.getElementById('daily-sales').innerText = `฿${dSale.toLocaleString()}`;
+            document.getElementById('daily-qty').innerText = `${dQty} แก้ว/ชิ้น`;
+            document.getElementById('total-wallet').innerText = `฿${(calcTotal('tea') + calcTotal('flower')).toLocaleString()}`;
+
+            const invList = document.getElementById('inventory-list');
+            invList.innerHTML = "";
+            db[proj].stock.forEach(item => {
+                invList.innerHTML += `
+                <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex flex-col items-center gap-2 shadow-sm">
+                    <div class="w-full flex justify-between items-start">
+                        <span class="font-bold text-[11px] text-slate-700 truncate w-3/4">${item.name}</span>
+                        <button onclick="removeItem(${item.id})" class="text-[9px] text-red-300">✕</button>
+                    </div>
+                    <div class="text-2xl font-bold text-blue-600 my-1">${item.qty}</div>
+                    <div class="flex w-full gap-2">
+                        <button onclick="adjustQty(${item.id}, -1)" class="flex-1 bg-white border border-slate-200 py-2 rounded-lg text-lg font-bold text-slate-400 active:scale-90">-</button>
+                        <button onclick="adjustQty(${item.id}, 1)" class="flex-1 bg-blue-600 py-2 rounded-lg text-lg font-bold text-white shadow-md active:scale-90">+</button>
+                    </div>
+                </div>`;
+            });
+
+            if(document.getElementById('page-history').classList.contains('active')) renderHistory();
+        }
+
+        function renderHistory() {
+            const proj = document.getElementById('project-selector').value;
+            const list = document.getElementById('log-list');
+            list.innerHTML = "";
+            const all = [...db[proj].invest.map(i=>({...i, t:'I'})), ...db[proj].sales.map(s=>({...s, t:'S'}))].sort((a,b)=>b.id-a.id);
+            all.forEach(x => {
+                list.innerHTML += `<div class="bg-white p-4 rounded-xl flex justify-between items-center border-l-4 ${x.t==='S'?'border-emerald-400':'border-red-400'} shadow-sm">
+                    <div><p class="font-bold text-xs text-slate-700">${x.name} ${x.qty ? 'x'+x.qty : ''}</p><p class="text-[8px] text-slate-400">${x.date}</p></div>
+                    <p class="font-bold ${x.t==='S'?'text-emerald-500':'text-red-400'}">฿${x.price.toLocaleString()}</p>
+                </div>`;
+            });
+        }
+
+        window.onload = updateUI;
+    </script>
+</body>
+</html>
