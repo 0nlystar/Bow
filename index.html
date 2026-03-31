@@ -103,7 +103,7 @@
     </nav>
 
  <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzlTaAORAZOZ0_atSrna4lbfS1IAHdn4JNbSOkvXgJ5QtzVSTbODZMjNBLjl8TIuBs_wA/exec";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyD8_AHgSxuNBnJVgXHSJsVFReP7pZTSyDGqrAZSu8stMDq2s8cTOB7ZJnPceuFmKB2mA/exec";
 
     let db = { 
         tea: { invest: [], sales: [], stock: [] },
@@ -146,8 +146,6 @@
         
         const now = new Date();
         const timestamp = now.getTime();
-        
-        // ตัดเวลาทิ้ง เก็บแค่ d/m/yyyy
         const dateOnly = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
         
         const row = [timestamp, proj, name, price, dateOnly];
@@ -170,8 +168,6 @@
         const now = new Date();
         const total = price * qty;
         const timestamp = now.getTime();
-        
-        // ตัดเวลาทิ้ง เก็บแค่ d/m/yyyy
         const dateOnly = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
         
         const row = [timestamp, proj, "ขายสินค้า", qty, total, dateOnly];
@@ -184,58 +180,68 @@
     }
 
     // --- ส่วนการคำนวณ (ใช้ Text Matching ค้นหาจาก String วันที่ที่ตัดเวลาแล้ว) ---
-   function updateUI() {
-    const proj = document.getElementById('project-selector').value;
-    const now = new Date();
-    const currentProject = db[proj] || { invest: [], sales: [], stock: [] };
+    function updateUI() {
+        const proj = document.getElementById('project-selector').value;
+        const now = new Date();
+        const currentProject = db[proj] || { invest: [], sales: [], stock: [] };
 
-    // ฟังก์ชันช่วยจัดรูปแบบวันที่ให้เป็น d/m/yyyy (เช่น 1/4/2026)
-    // เพื่อให้ไม่ว่าข้อมูลมาแบบไหน (มี 0 นำหน้าหรือไม่) ก็จะเทียบกันได้
-    const formatStr = (dStr) => {
-        if (!dStr) return "";
-        // แยกส่วน วัน/เดือน/ปี ออกมา (รองรับทั้ง / และ -)
-        const parts = String(dStr).split(/[\/\- ]/); 
-        if (parts.length < 3) return String(dStr);
-        
-        let d = parseInt(parts[0]);
-        let m = parseInt(parts[1]);
-        let y = parseInt(parts[2]);
-        
-        // ถ้าเป็น พ.ศ. ให้แปลงเป็น ค.ศ. เพื่อความเป็นสากลในการเช็ค
-        if (y > 2500) y -= 543;
-        
-        return `${d}/${m}/${y}`;
-    };
+        const formatStr = (dStr) => {
+            if (!dStr) return "";
+            const parts = String(dStr).split(/[\/\- ]/); 
+            if (parts.length < 3) return String(dStr).trim();
+            let d = parseInt(parts[0]);
+            let m = parseInt(parts[1]);
+            let y = parseInt(parts[2]);
+            if (y > 2500) y -= 543;
+            return `${d}/${m}/${y}`;
+        };
 
-    // วันที่ปัจจุบันในรูปแบบมาตรฐาน d/m/yyyy
-    const todayMatch = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
-    const monthMatch = `/${now.getMonth() + 1}/${now.getFullYear()}`;
+        const todayMatch = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
+        const monthMatch = `/${now.getMonth() + 1}/${now.getFullYear()}`;
 
-    // ฟังก์ชันเช็ค: ปรับให้ล้างรูปแบบก่อนเทียบ
-    const isToday = (item) => {
-        const itemDate = formatStr(item.date);
-        return itemDate === todayMatch || itemDate.startsWith(todayMatch);
-    };
-    
-    const isThisMonth = (item) => {
-        const itemDate = formatStr(item.date);
-        return itemDate.includes(monthMatch);
-    };
+        const isToday = (item) => formatStr(item.date) === todayMatch;
+        const isThisMonth = (item) => formatStr(item.date).includes(monthMatch);
 
-    // --- ส่วนคำนวณเหมือนเดิม แต่เพิ่ม Number() ดักไว้ ---
-    const mInv = (currentProject.invest || []).filter(isThisMonth).reduce((s, i) => s + (Number(i.price) || 0), 0);
-    const mSale = (currentProject.sales || []).filter(isThisMonth).reduce((s, i) => s + (Number(i.price) || 0), 0);
-    
-    const dSale = (currentProject.sales || []).filter(isToday).reduce((s, i) => s + (Number(i.price) || 0), 0);
-    const dQty = (currentProject.sales || []).filter(isToday).reduce((s, i) => s + (Number(i.qty) || 0), 0);
+        // คำนวณยอดของโปรเจกต์ปัจจุบัน
+        const mInv = (currentProject.invest || []).filter(isThisMonth).reduce((s, i) => s + (Number(i.price) || 0), 0);
+        const mSale = (currentProject.sales || []).filter(isThisMonth).reduce((s, i) => s + (Number(i.price) || 0), 0);
+        const dSale = (currentProject.sales || []).filter(isToday).reduce((s, i) => s + (Number(i.price) || 0), 0);
+        const dQty = (currentProject.sales || []).filter(isToday).reduce((s, i) => s + (Number(i.qty) || 0), 0);
 
-    // อัปเดตตัวเลขบนหน้าจอ
-    document.getElementById('stat-profit').innerText = `฿${(mSale - mInv).toLocaleString()}`;
-    document.getElementById('daily-sales').innerText = `฿${dSale.toLocaleString()}`;
-    document.getElementById('daily-qty').innerText = `${dQty} ชิ้น`;
-    
-    // ... ส่วนที่เหลือเหมือนเดิม ...
-}
+        // อัปเดต UI หลัก
+        document.getElementById('current-month-display').innerText = now.toLocaleString('th-TH', { month: 'long', year: 'numeric' });
+        document.getElementById('stat-profit').innerText = `฿${(mSale - mInv).toLocaleString()}`;
+        document.getElementById('daily-sales').innerText = `฿${dSale.toLocaleString()}`;
+        document.getElementById('daily-qty').innerText = `${dQty} ${proj === 'tea' ? 'แก้ว' : 'ชิ้น'}`;
+
+        // คำนวณยอดรวมทุกธุรกิจ (Total Wallet)
+        const calcNet = (pKey) => {
+            const p = db[pKey] || { sales: [], invest: [] };
+            const sales = (p.sales || []).reduce((s, i) => s + (Number(i.price) || 0), 0);
+            const invest = (p.invest || []).reduce((s, i) => s + (Number(i.price) || 0), 0);
+            return sales - invest;
+        };
+        const totalNet = calcNet('tea') + calcNet('flower');
+        document.getElementById('total-wallet').innerText = `฿${totalNet.toLocaleString()}`;
+
+        // ส่วนวาด Stock
+        const invList = document.getElementById('inventory-list');
+        invList.innerHTML = "";
+        (currentProject.stock || []).forEach(item => {
+            invList.innerHTML += `
+            <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex flex-col items-center gap-2 shadow-sm relative">
+                <button onclick="removeItem(${item.id})" class="absolute top-2 right-2 w-6 h-6 bg-red-50 text-red-400 rounded-full text-[10px] flex items-center justify-center">🗑️</button>
+                <span class="font-bold text-[11px] text-slate-700 truncate w-3/4 text-center">${item.name}</span>
+                <div class="text-2xl font-bold text-blue-600 my-1">${item.qty}</div>
+                <div class="flex w-full gap-2">
+                    <button onclick="adjustQty(${item.id}, -1)" class="flex-1 bg-white border border-slate-200 py-2 rounded-lg text-lg font-bold text-slate-400">-</button>
+                    <button onclick="adjustQty(${item.id}, 1)" class="flex-1 bg-blue-600 py-2 rounded-lg text-lg font-bold text-white shadow-md active:scale-90">+</button>
+                </div>
+            </div>`;
+        });
+
+        if(document.getElementById('page-history').classList.contains('active')) renderHistory();
+    }
 
     function renderHistory() {
         const proj = document.getElementById('project-selector').value;
@@ -274,7 +280,7 @@
         const proj = document.getElementById('project-selector').value;
         const item = db[proj].stock.find(i => i.id === id);
         if(item) { 
-            item.qty = Math.max(0, item.qty + change); 
+            item.qty = Math.max(0, parseInt(item.qty) + change); 
             syncToSheets('updateStock', { project: proj, itemName: item.name, newQty: item.qty }); 
             updateUI(); 
         }
@@ -282,6 +288,5 @@
 
     document.addEventListener('DOMContentLoaded', loadDataFromSheets);
 </script>
-
 </body>
 </html>
