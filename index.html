@@ -103,7 +103,7 @@
     </nav>
 
    <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyyUNnX-yPjsHoY6Aq2Vs9eSg7KNFazbOianmH0AnENBFDb4smrvBbFpU2Cs3c4hQ/exec";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyJcCjL2J3FeKD6z7SDii9oImnP3heiGMDZxYgz5ZAgjf_GhG0SpuhMIWA8EC0zPMUANA/exec";
 
     let db = { 
         tea: { invest: [], sales: [], stock: [] },
@@ -179,43 +179,40 @@
     }
 
     // --- ส่วนการคำนวณ (ใช้เลข Timestamp มาเช็ค จะแม่นที่สุด) ---
-   function updateUI() {
+  function updateUI() {
             const proj = document.getElementById('project-selector').value;
             const now = new Date();
-            const curD = now.getDate();
-            const curM = now.getMonth();
-            const curY = now.getFullYear();
-
             const currentProject = db[proj] || { invest: [], sales: [], stock: [] };
 
-            // --- 🚀 เปลี่ยนมาใช้ ID (Timestamp) ในการเช็ควันที่แทน เลิกอ่านวันที่แบบ Text ---
-            const isThisMonth = (item) => {
-                if (!item.id) return false;
-                const d = new Date(Number(item.id)); // ดึงวันที่จาก ID ตรงๆ
-                return d.getMonth() === curM && d.getFullYear() === curY;
-            };
+            // ดึงเลข วัน/เดือน/ปี ของวันนี้ (เดือนต้อง +1 เพราะระบบ JS เริ่มที่ 0)
+            const curD = now.getDate();
+            const curM = now.getMonth() + 1; 
+            const curY = now.getFullYear();
 
-            const isToday = (item) => {
-                if (!item.id) return false;
-                const d = new Date(Number(item.id)); // ดึงวันที่จาก ID ตรงๆ
-                return d.getDate() === curD && d.getMonth() === curM && d.getFullYear() === curY;
-            };
+            // สร้างคำเพื่อเอาไปค้นหาแบบ Text ตรงๆ (ดักให้ทั้งค.ศ. และ พ.ศ.)
+            const todayStr1 = `${curD}/${curM}/${curY}`;       // เช่น "1/4/2026"
+            const todayStr2 = `${curD}/${curM}/${curY + 543}`; // เช่น "1/4/2569"
+            const monthStr1 = `/${curM}/${curY}`;              // เช่น "/4/2026"
+            const monthStr2 = `/${curM}/${curY + 543}`;        // เช่น "/4/2569"
 
-            // --- คำนวณยอด โดยโยน item เข้าไปเช็คในฟังก์ชันใหม่ ---
+            // ถ้าในข้อความมีคำว่า 1/4/2026 หรือ 1/4/2569 ถือว่าเป็นวันนี้เลย จบปิ้ง
+            const isToday = (item) => String(item.date).includes(todayStr1) || String(item.date).includes(todayStr2);
+            const isThisMonth = (item) => String(item.date).includes(monthStr1) || String(item.date).includes(monthStr2);
+
+            // คำนวณยอด
             const mInv = (currentProject.invest || []).filter(isThisMonth).reduce((s, i) => s + (Number(i.price) || 0), 0);
             const mSale = (currentProject.sales || []).filter(isThisMonth).reduce((s, i) => s + (Number(i.price) || 0), 0);
             
             const dSale = (currentProject.sales || []).filter(isToday).reduce((s, i) => s + (Number(i.price) || 0), 0);
             const dQty = (currentProject.sales || []).filter(isToday).reduce((s, i) => s + (Number(i.qty) || 0), 0);
             
-            // --- อัปเดตการแสดงผลบนหน้าจอ ---
-            const monthLabel = now.toLocaleString('th-TH', { month: 'long', year: 'numeric' });
-            document.getElementById('current-month-display').innerText = monthLabel;
-            
+            // อัปเดต UI หน้าจอ
+            document.getElementById('current-month-display').innerText = now.toLocaleString('th-TH', { month: 'long', year: 'numeric' });
             document.getElementById('stat-profit').innerText = `฿${(mSale - mInv).toLocaleString()}`;
             document.getElementById('daily-sales').innerText = `฿${dSale.toLocaleString()}`;
             document.getElementById('daily-qty').innerText = `${dQty} ชิ้น`;
             
+            // คำนวณยอดกระเป๋ารวม
             const calcAllTime = (p) => {
                 const pj = db[p] || { sales: [], invest: [] };
                 return (pj.sales || []).reduce((s, i) => s + (Number(i.price) || 0), 0) - 
@@ -223,7 +220,7 @@
             };
             document.getElementById('total-wallet').innerText = `฿${(calcAllTime('tea') + calcAllTime('flower')).toLocaleString()}`;
 
-            // --- วาดรายการ Stock ---
+            // วาดรายการ Stock
             const invList = document.getElementById('inventory-list');
             invList.innerHTML = "";
             (currentProject.stock || []).forEach(item => {
