@@ -225,66 +225,70 @@
     function setQty(v) { document.getElementById('qty-input').value = Math.max(1, parseInt(document.getElementById('qty-input').value) + v); }
 
     // --- 3. ฟังก์ชันหลักในการวาดหน้าจอ (ปรับปรุงใหม่เพื่อความแม่นยำ) ---
-    function updateUI() {
+   function updateUI() {
             const proj = document.getElementById('project-selector').value;
             const now = new Date();
             const currentMonth = now.getMonth();
-            const currentYear = now.getFullYear(); // จะได้เป็น ค.ศ. เช่น 2026
+            const currentYear = now.getFullYear();
 
             const currentProject = db[proj] || { invest: [], sales: [], stock: [] };
 
-            // ฟังก์ชันแปลงวันที่ที่รองรับทั้ง พ.ศ. และ ค.ศ.
+            // ฟังก์ชันแปลงวันที่ให้เป็น Date Object ที่แม่นยำ
             const parseToDate = (dateVal) => {
                 if (!dateVal) return null;
-                
-                // 1. ถ้าเป็นตัวเลข (Timestamp) ให้ใช้ได้เลย
                 if (typeof dateVal === 'number') return new Date(dateVal);
                 
-                // 2. ถ้าเป็น String (เช่น "31/3/2569, 23:54:22")
-                let s = String(dateVal);
-                let datePart = s.split(',')[0].trim(); // แยกเอาเฉพาะ "31/3/2569"
+                let s = String(dateVal).trim();
+                // แยกวันที่จาก "31/3/2569, 23:54:22" หรือ "31/3/2569"
+                let datePart = s.split(',')[0].split(' ')[0].trim(); 
                 let parts = datePart.split('/');
                 
                 if (parts.length === 3) {
                     let d = parseInt(parts[0]);
                     let m = parseInt(parts[1]) - 1;
                     let y = parseInt(parts[2]);
-                    
-                    // ตรวจสอบว่าถ้าเป็นปี พ.ศ. (เกิน 2500) ให้ลบ 543 เพื่อทำเป็น ค.ศ.
-                    if (y > 2500) y -= 543;
-                    
+                    if (y > 2500) y -= 543; // แปลง พ.ศ. เป็น ค.ศ.
                     return new Date(y, m, d);
                 }
                 
-                // 3. ถ้าเป็นรูปแบบมาตรฐานอื่นๆ
                 let d = new Date(dateVal);
                 return isNaN(d.getTime()) ? null : d;
             };
 
+            // เช็คว่าเป็นเดือนนี้หรือไม่
             const isThisMonth = (dateVal) => {
                 const d = parseToDate(dateVal);
-                return d && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+                if (!d) return false;
+                return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
             };
 
+            // เช็คว่าเป็นวันนี้หรือไม่
             const isToday = (dateVal) => {
                 const d = parseToDate(dateVal);
-                return d && d.getDate() === now.getDate() && 
-                           d.getMonth() === currentMonth && 
-                           d.getFullYear() === currentYear;
+                if (!d) return false;
+                return d.getDate() === now.getDate() && 
+                       d.getMonth() === currentMonth && 
+                       d.getFullYear() === currentYear;
             };
 
-            // ส่วนการคำนวณและแสดงผล (เหมือนเดิม)
+            // --- ส่วนการคำนวณ ---
             const mInv = (currentProject.invest || []).filter(i => isThisMonth(i.date)).reduce((s, i) => s + (Number(i.price) || 0), 0);
             const mSale = (currentProject.sales || []).filter(i => isThisMonth(i.date)).reduce((s, i) => s + (Number(i.price) || 0), 0);
+            
             const dSale = (currentProject.sales || []).filter(i => isToday(i.date)).reduce((s, i) => s + (Number(i.price) || 0), 0);
             const dQty = (currentProject.sales || []).filter(i => isToday(i.date)).reduce((s, i) => s + (Number(i.qty) || 0), 0);
             
+            // --- อัปเดตการแสดงผลบนหน้าจอ ---
             const monthLabel = now.toLocaleString('th-TH', { month: 'long', year: 'numeric' });
             document.getElementById('current-month-display').innerText = monthLabel;
+            
+            // กำไรเดือนนี้
             document.getElementById('stat-profit').innerText = `฿${(mSale - mInv).toLocaleString()}`;
+            // ยอดขายวันนี้
             document.getElementById('daily-sales').innerText = `฿${dSale.toLocaleString()}`;
             document.getElementById('daily-qty').innerText = `${dQty} ชิ้น`;
             
+            // รวมกำไรทุกธุรกิจ (อันนี้ไม่กรองวันที่ เลยแสดงผลปกติ)
             const calcAllTime = (p) => {
                 const pj = db[p] || { sales: [], invest: [] };
                 return (pj.sales || []).reduce((s, i) => s + (Number(i.price) || 0), 0) - 
@@ -292,7 +296,7 @@
             };
             document.getElementById('total-wallet').innerText = `฿${(calcAllTime('tea') + calcAllTime('flower')).toLocaleString()}`;
 
-            // วาด Stock (เหมือนเดิม)
+            // วาดรายการ Stock
             const invList = document.getElementById('inventory-list');
             invList.innerHTML = "";
             (currentProject.stock || []).forEach(item => {
@@ -307,6 +311,7 @@
                     </div>
                 </div>`;
             });
+
             if(document.getElementById('page-history').classList.contains('active')) renderHistory();
         }
     function renderHistory() {
