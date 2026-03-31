@@ -261,19 +261,44 @@
         await alert("บันทึกต้นทุนเรียบร้อย ✨");
     }
 
-    async function addSale() {
+   async function addSale() {
         const proj = document.getElementById('project-selector').value;
         const price = parseFloat(document.getElementById('sale-price-input').value);
         const qty = parseInt(document.getElementById('qty-input').value);
         if(!price) return alert("กรุณาใส่ราคาขาย");
+        
         const now = new Date();
         const total = price * qty;
         const timestamp = String(now.getTime());
         const dateOnly = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
+        
+        // --- ส่วนที่เพิ่มการสุ่มข้อความ ---
+        const messages = [
+            "เก่งมากกคับบี๋ ✨",
+            "ทำดีมาก มาจุ๊บ 👍",
+            "รวยแล้ววว พาไปเที่ยวด้วยนะ 💰",
+            "วันนี้เฮงๆ นะจ้ะ 🔥",
+            "สุดยอดไปเลยค้าบ 💖",
+            "ดูแลตัวเองด้วยจ้า 💖",
+            "คนเก่งของเค้า สุดยอดที่สุดเลย 💖",
+            "แฟนใครเนี่ย ทั้งเก่งทั้งน่ารัก ✨",
+            "เก่งแบบนี้ ต้องรางวัลเป็นที่รักเยอะๆ แล้ว 🎁",
+            "ออเดอร์เข้ารัวๆ รวยแล้วอย่าลืมเค้านะ 🤑",
+             "เอาไปเลย 10 เต็มไม่หัก! 💯",
+              "ที่หนึ่งในใจเค้าเลย 🥇",
+                "ขายดีแบบนี้... คืนนี้เลี้ยงหมูกระทะเลยป่าว? 🥓",
+                 "ไหนดูซิ... เงินเข้ากี่บาท จะได้ขอถูก 🤑",
+                  "เกินต้านมากแม่ ✨",
+            "ออเดอร์ปังมาก! 💸"
+        ];
+        const randomMsg = messages[Math.floor(Math.random() * messages.length)];
+        // ----------------------------
+
         db[proj].sales.push({ name: "ขายสินค้า", qty, price: total, date: dateOnly, id: timestamp });
         syncToSheets('addRecord', { type: 'Sales', row: [timestamp, proj, "ขายสินค้า", qty, total, dateOnly] });
+        
         updateUI(); 
-        await alert("บันทึกการขายสำเร็จ 💖");
+        await alert(randomMsg); // แสดงข้อความที่สุ่มมาได้
     }
 
     function addNewItem() {
