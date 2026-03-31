@@ -103,9 +103,8 @@
     </nav>
 
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxFSz_L-EcVwkJPuYDr3yt3H1AlSsSIwReUL1gjAmWh8DdRCZ9NX4K5vrWiAqauJEWPBA/exec";
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxMyGe96s8NhZULD6rkbUn1PnnGPO2j8H28EVSHX1JYqA3qoLLsT9lMeKJJrOmQBnPmNA/exec";
 
-        // เริ่มต้นด้วยข้อมูลว่าง (จะดึงจาก Sheets มาเติม)
         let db = { 
             tea: { invest: [], sales: [], stock: [] },
             flower: { invest: [], sales: [], stock: [] }
@@ -114,7 +113,6 @@
         function getMonthKey() { return new Date().toLocaleString('th-TH', { month: 'long', year: 'numeric' }); }
         function getDayKey() { return new Date().toLocaleDateString('th-TH'); }
 
-        // ดึงข้อมูลออนไลน์จาก Google Sheets
         async function loadDataFromSheets() {
             try {
                 document.getElementById('stat-profit').innerText = "Loading...";
@@ -126,7 +124,6 @@
                 }
             } catch (e) {
                 console.error("Load Error", e);
-                // ถ้าโหลดไม่เข้า ให้ใช้ค่าเริ่มต้น
                 updateUI();
             }
         }
@@ -171,6 +168,23 @@
             }
         }
 
+        // --- ฟังก์ชันลบสินค้าออกจากสต็อก ---
+        function removeItem(id) {
+            const proj = document.getElementById('project-selector').value;
+            const item = db[proj].stock.find(i => i.id === id);
+            
+            if(item && confirm(`คุณต้องการลบ "${item.name}" ออกจากสต็อกใช่หรือไม่?`)) {
+                // 1. ส่งคำสั่งลบไปที่ Sheets (ต้องสร้างเงื่อนไข deleteStock ใน .gs ด้วย)
+                syncToSheets('deleteStock', { project: proj, itemName: item.name });
+                
+                // 2. ลบออกจากตัวแปร db ในหน้าเว็บ
+                db[proj].stock = db[proj].stock.filter(i => i.id !== id);
+                
+                // 3. อัปเดต UI
+                save();
+            }
+        }
+
         function addInvest() {
             const proj = document.getElementById('project-selector').value;
             const price = parseFloat(document.getElementById('in-price').value);
@@ -199,21 +213,17 @@
 
         function setQty(v) { document.getElementById('qty-input').value = Math.max(1, parseInt(document.getElementById('qty-input').value) + v); }
 
-        function save() {
-            // ไม่ใช้ localStorage แล้ว แต่อัปเดตหน้าจอทันที
-            updateUI(); 
-        }
+        function save() { updateUI(); }
 
         function updateUI() {
             const proj = document.getElementById('project-selector').value;
             const today = getDayKey();
             const thisMonth = getMonthKey();
 
-            // คำนวณจากข้อมูลใน db (ที่โหลดมาจากชีต)
-            const mInv = db[proj].invest.filter(i => i.monthGroup === thisMonth || i.date.includes(thisMonth)).reduce((s, i) => s + i.price, 0);
-            const mSale = db[proj].sales.filter(i => i.monthGroup === thisMonth || i.date.includes(thisMonth)).reduce((s, i) => s + i.price, 0);
-            const dSale = db[proj].sales.filter(i => i.dayGroup === today || i.date.includes(today)).reduce((s, i) => s + i.price, 0);
-            const dQty = db[proj].sales.filter(i => i.dayGroup === today || i.date.includes(today)).reduce((s, i) => s + i.qty, 0);
+            const mInv = db[proj].invest.filter(i => i.monthGroup === thisMonth || (i.date && i.date.includes(thisMonth))).reduce((s, i) => s + i.price, 0);
+            const mSale = db[proj].sales.filter(i => i.monthGroup === thisMonth || (i.date && i.date.includes(thisMonth))).reduce((s, i) => s + i.price, 0);
+            const dSale = db[proj].sales.filter(i => i.dayGroup === today || (i.date && i.date.includes(today))).reduce((s, i) => s + i.price, 0);
+            const dQty = db[proj].sales.filter(i => i.dayGroup === today || (i.date && i.date.includes(today))).reduce((s, i) => s + i.qty, 0);
             
             const calcTotal = (p) => db[p].sales.reduce((s, i) => s + i.price, 0) - db[p].invest.reduce((s, i) => s + i.price, 0);
 
@@ -227,7 +237,9 @@
             invList.innerHTML = "";
             db[proj].stock.forEach(item => {
                 invList.innerHTML += `
-                <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex flex-col items-center gap-2 shadow-sm">
+                <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex flex-col items-center gap-2 shadow-sm relative">
+                    <button onclick="removeItem(${item.id})" class="absolute top-2 right-2 w-6 h-6 bg-red-50 text-red-400 rounded-full text-[10px] flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors">🗑️</button>
+                    
                     <div class="w-full flex justify-between items-start">
                         <span class="font-bold text-[11px] text-slate-700 truncate w-3/4">${item.name}</span>
                     </div>
@@ -255,7 +267,6 @@
             });
         }
 
-        // เมื่อเปิดหน้าเว็บ ให้โหลดข้อมูลจาก Google Sheets ทันที
         window.onload = loadDataFromSheets;
     </script>
 </body>
