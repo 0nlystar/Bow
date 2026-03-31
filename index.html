@@ -5,105 +5,144 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>BIZ POS ONLINE</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Kanit', sans-serif; background-color: #f1f5f9; padding-bottom: 100px; }
-        .page { display: none; animation: fadeIn 0.15s ease-in-out; }
+        body { 
+            font-family: 'Kanit', sans-serif; 
+            background-color: #fff1f2; 
+            padding-bottom: 100px; 
+            color: #4b5563;
+        }
+        .page { display: none; animation: fadeIn 0.2s ease-out; }
         .page.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        .nav-btn.active { color: #2563eb; border-top: 4px solid #2563eb; background-color: #f8fafc; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .glass-card { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); border: 1px solid rgba(251, 113, 133, 0.1); }
+        .pink-gradient { background: linear-gradient(135deg, #fda4af 0%, #fb7185 100%); }
+        .nav-btn.active { color: #fb7185; }
+        .nav-btn.active svg { transform: translateY(-3px); color: #fb7185; }
+        
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
     </style>
 </head>
 <body>
 
-    <div class="bg-slate-900 text-white p-6 rounded-b-[3rem] shadow-2xl sticky top-0 z-50">
+    <div class="pink-gradient text-white p-6 rounded-b-[3.5rem] shadow-lg sticky top-0 z-50">
         <div class="max-w-md mx-auto space-y-4">
             <div class="flex gap-2">
-                <select id="project-selector" onchange="updateUI()" class="flex-1 bg-white/10 p-3 rounded-2xl font-bold outline-none border border-white/20 text-sm text-white">
-                    <option value="tea" class="text-black">🥤 ร้านชาผลไม้รวม</option>
-                    <option value="flower" class="text-black">🌸 งานลวดกำมะหยี่</option>
+                <select id="project-selector" onchange="updateUI()" class="flex-1 bg-white/20 p-3 rounded-2xl font-semibold outline-none border border-white/30 text-sm text-white">
+                    <option value="tea" class="text-gray-800">🥤 ร้านชาผลไม้รวม</option>
+                    <option value="flower" class="text-gray-800">🌸 งานลวดกำมะหยี่</option>
                 </select>
-               <div class="bg-blue-600 rounded-2xl font-bold flex items-center justify-center min-w-[140px] overflow-hidden border border-blue-400 shadow-inner">
-    <input type="month" id="month-filter" onchange="updateUI()" 
-        class="bg-transparent text-white text-[11px] p-3 outline-none border-none cursor-pointer w-full text-center uppercase">
-</div>
+                <div class="bg-white/20 rounded-2xl flex items-center justify-center min-w-[120px] border border-white/30 overflow-hidden">
+                    <input type="month" id="month-filter" onchange="updateUI()" 
+                        class="bg-transparent text-white text-[11px] p-3 outline-none cursor-pointer w-full text-center font-bold">
+                </div>
             </div>
-            <div class="text-center">
-                <p class="text-[9px] opacity-50 uppercase tracking-widest mb-1">กำไรสุทธิเดือนนี้ (Online)</p>
-                <h1 id="stat-profit" class="text-4xl font-bold text-emerald-400">฿0</h1>
+            <div class="text-center py-2">
+                <p class="text-[10px] opacity-90 uppercase tracking-[0.2em] mb-1 font-medium">กำไรสุทธิเดือนนี้</p>
+                <h1 id="stat-profit" class="text-4xl font-bold">฿0</h1>
             </div>
         </div>
     </div>
 
-    <main class="max-w-md mx-auto p-4">
-        <section id="page-dash" class="page active space-y-4">
-            <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white p-8 rounded-[2.5rem] shadow-xl text-center">
-                <p class="text-[10px] opacity-80 uppercase font-bold mb-2 tracking-widest">ยอดขายวันนี้</p>
-                <h2 id="daily-sales" class="text-5xl font-bold mb-2">฿0</h2>
-                <p id="daily-qty" class="text-lg opacity-90">0 แก้ว/ชิ้น</p>
+    <main class="max-w-md mx-auto p-5">
+        
+        <section id="page-dash" class="page active space-y-5">
+            <div class="bg-white p-8 rounded-[3rem] shadow-sm border border-rose-100 text-center relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-10 text-6xl">✨</div>
+                <p class="text-[11px] text-rose-400 uppercase font-bold mb-2 tracking-widest">ยอดขายวันนี้</p>
+                <h2 id="daily-sales" class="text-5xl font-bold text-gray-800 mb-2">฿0</h2>
+                <p id="daily-qty" class="text-sm font-medium text-gray-400 bg-rose-50 inline-block px-4 py-1 rounded-full">0 รายการ</p>
             </div>
-            <div class="bg-slate-800 p-6 rounded-[2rem] text-center shadow-lg">
-                <p class="text-[10px] text-slate-400 uppercase mb-1 font-bold">รวมกำไรสุทธิทุกธุรกิจ</p>
-                <h2 id="total-wallet" class="text-2xl font-bold text-white">฿0</h2>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-white/60 p-5 rounded-[2.5rem] border border-rose-50 text-center shadow-sm">
+                    <p class="text-[10px] text-gray-400 font-bold uppercase mb-1">สะสม: ร้านชา</p>
+                    <h3 id="net-tea" class="text-lg font-bold text-rose-500">฿0</h3>
+                </div>
+                <div class="bg-white/60 p-5 rounded-[2.5rem] border border-rose-50 text-center shadow-sm">
+                    <p class="text-[10px] text-gray-400 font-bold uppercase mb-1">สะสม: งานลวด</p>
+                    <h3 id="net-flower" class="text-lg font-bold text-rose-500">฿0</h3>
+                </div>
+            </div>
+
+            <div class="bg-gray-800 p-6 rounded-[2.5rem] text-center shadow-xl border-b-4 border-rose-400">
+                <p class="text-[10px] text-gray-400 uppercase mb-1 font-bold tracking-widest">ยอดเงินรวมทั้งหมด</p>
+                <h2 id="total-wallet" class="text-3xl font-bold text-white">฿0</h2>
             </div>
         </section>
 
         <section id="page-inventory" class="page space-y-4">
-            <div class="bg-white p-5 rounded-[2.5rem] shadow-sm border border-slate-200">
-                <h2 class="font-bold text-slate-800 mb-4 text-xs uppercase tracking-wider">📦 เช็คของคงเหลือ</h2>
-                <div class="flex gap-2 mb-6">
-                    <input type="text" id="new-item-name" placeholder="ชื่อของใหม่..." class="flex-1 p-3 rounded-xl bg-slate-100 border-none outline-none text-sm focus:ring-2 ring-blue-500">
-                    <button onclick="addNewItem()" class="bg-blue-600 text-white px-5 rounded-xl font-bold text-xl active:scale-90 transition-transform">+</button>
+            <div class="bg-white p-6 rounded-[3rem] shadow-sm border border-rose-100">
+                <div class="flex items-center justify-between mb-5 px-2">
+                    <h2 class="font-bold text-gray-700 text-sm uppercase tracking-wider">📦 เช็คสินค้าคงเหลือ</h2>
                 </div>
-                <div id="inventory-list" class="grid grid-cols-2 gap-3"></div>
+                <div class="flex gap-2 mb-6">
+                    <input type="text" id="new-item-name" placeholder="เพิ่มสินค้าใหม่..." class="flex-1 p-4 rounded-2xl bg-rose-50/50 border-none outline-none text-sm focus:ring-2 ring-rose-200 transition-all">
+                    <button onclick="addNewItem()" class="bg-rose-400 text-white px-6 rounded-2xl font-bold text-2xl shadow-md active:scale-90 transition-transform">+</button>
+                </div>
+                <div id="inventory-list" class="grid grid-cols-2 gap-4"></div>
             </div>
         </section>
 
-        <section id="page-record" class="page space-y-4">
-            <div class="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-200">
-                <h2 class="font-bold text-slate-400 mb-4 text-[10px] uppercase tracking-widest text-center">บันทึกรายจ่าย (ต้นทุน)</h2>
+        <section id="page-record" class="page space-y-5">
+            <div class="bg-white p-6 rounded-[3rem] shadow-sm border border-rose-100">
+                <h2 class="font-bold text-gray-400 mb-5 text-[10px] uppercase tracking-[0.2em] text-center">รายจ่าย (ซื้อของ/ต้นทุน)</h2>
                 <div class="space-y-3">
-                    <input type="text" id="in-name" placeholder="ชื่อรายการ (เช่น ซื้อผลไม้)" class="w-full p-4 rounded-2xl bg-slate-50 outline-none border border-slate-100 focus:bg-white focus:ring-2 ring-slate-100 transition-all text-sm">
-                    <input type="number" id="in-price" placeholder="ระบุราคาต้นทุน" class="w-full p-4 rounded-2xl bg-slate-50 font-bold text-red-500 outline-none border border-slate-100 text-2xl focus:bg-white focus:ring-2 ring-red-100 transition-all">
-                    <button onclick="addInvest()" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold active:scale-95 transition-all shadow-lg text-sm mt-2">บันทึกรายการต้นทุน</button>
+                    <input type="text" id="in-name" placeholder="ชื่อรายการ..." class="w-full p-4 rounded-2xl bg-gray-50 outline-none text-sm border border-transparent focus:bg-white focus:border-rose-100 transition-all">
+                    <div class="relative">
+                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-rose-300 font-bold">฿</span>
+                        <input type="number" id="in-price" placeholder="0.00" class="w-full p-4 pl-10 rounded-2xl bg-gray-50 font-bold text-rose-500 text-2xl outline-none border border-transparent">
+                    </div>
+                    <button onclick="addInvest()" class="w-full bg-gray-800 text-white py-4 rounded-2xl font-bold shadow-lg active:scale-[0.98] transition-all">บันทึกต้นทุน</button>
                 </div>
             </div>
-            <div class="bg-emerald-50 p-6 rounded-[2.5rem] shadow-inner border border-emerald-100">
-                <h2 class="font-bold text-emerald-800 mb-4 text-[10px] uppercase tracking-widest text-center">บันทึกรายได้ (ขาย)</h2>
-                <input type="number" id="sale-price-input" placeholder="ราคาขายต่อชิ้น" class="w-full p-4 rounded-3xl bg-white mb-4 font-bold text-emerald-600 text-3xl text-center outline-none border border-emerald-200 shadow-sm">
-                <div class="flex items-center justify-between bg-white/60 p-2 rounded-[2rem] mb-6">
-                    <button onclick="setQty(-1)" class="w-14 h-14 bg-white rounded-2xl text-2xl font-bold text-slate-300 shadow-sm">-</button>
-                    <div class="text-center">
-                        <input type="number" id="qty-input" value="1" class="w-16 text-center text-4xl font-bold text-emerald-600 outline-none bg-transparent">
-                        <p class="text-[8px] text-emerald-400 font-bold uppercase">จำนวนชิ้น</p>
-                    </div>
-                    <button onclick="setQty(1)" class="w-14 h-14 bg-emerald-500 text-white rounded-2xl text-2xl font-bold shadow-lg shadow-emerald-100 active:scale-90">+</button>
+            
+            <div class="bg-white p-6 rounded-[3rem] border border-rose-100 shadow-sm">
+                <h2 class="font-bold text-rose-400 mb-5 text-[10px] uppercase tracking-[0.2em] text-center">รายได้ (บันทึกการขาย)</h2>
+                <div class="relative mb-4">
+                    <span class="absolute left-6 top-1/2 -translate-y-1/2 text-rose-200 text-xl font-bold">฿</span>
+                    <input type="number" id="sale-price-input" placeholder="ราคาขาย" class="w-full p-5 pl-12 rounded-[2rem] bg-rose-50 font-bold text-rose-600 text-4xl text-center outline-none border border-rose-100">
                 </div>
-                <button onclick="addSale()" class="w-full bg-emerald-600 text-white py-5 rounded-[2rem] font-bold shadow-xl active:scale-95 transition-all text-xl">ยืนยันบันทึกขาย</button>
+                <div class="flex items-center justify-between bg-gray-50 p-2 rounded-[2.5rem] mb-6">
+                    <button onclick="setQty(-1)" class="w-14 h-14 bg-white rounded-full text-2xl font-bold text-gray-300 shadow-sm active:scale-90">-</button>
+                    <div class="text-center">
+                        <input type="number" id="qty-input" value="1" class="w-16 text-center text-3xl font-bold text-gray-700 outline-none bg-transparent">
+                        <p class="text-[8px] text-gray-400 font-bold uppercase">จำนวนชิ้น</p>
+                    </div>
+                    <button onclick="setQty(1)" class="w-14 h-14 bg-rose-400 text-white rounded-full text-2xl font-bold shadow-lg active:scale-90">+</button>
+                </div>
+                <button onclick="addSale()" class="w-full pink-gradient text-white py-5 rounded-[2.5rem] font-bold shadow-xl shadow-rose-200 text-xl active:scale-[0.98] transition-all">ยืนยันการขาย</button>
             </div>
         </section>
 
         <section id="page-history" class="page space-y-3">
-            <div id="log-list" class="space-y-2"></div>
+            <div id="log-list" class="space-y-3"></div>
         </section>
     </main>
 
-    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around py-2 z-50 rounded-t-[2rem] shadow-2xl">
-        <button onclick="navTo('dash')" id="nav-dash" class="nav-btn active flex flex-col items-center flex-1 py-2 rounded-xl text-blue-600">
-            <span class="text-xl">📊</span><span class="text-[8px] font-bold uppercase mt-1">Home</span>
+    <nav class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-rose-50 flex justify-around py-3 z-50 rounded-t-[2.5rem] shadow-[0_-10px_25px_rgba(251,113,133,0.1)]">
+        <button onclick="navTo('dash')" id="nav-dash" class="nav-btn active flex flex-col items-center flex-1">
+            <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+            <span class="text-[9px] font-bold uppercase">หน้าแรก</span>
         </button>
-        <button onclick="navTo('inventory')" id="nav-inventory" class="nav-btn flex flex-col items-center flex-1 py-2 rounded-xl text-slate-300">
-            <span class="text-xl">📦</span><span class="text-[8px] font-bold uppercase mt-1">Check</span>
+        <button onclick="navTo('inventory')" id="nav-inventory" class="nav-btn flex flex-col items-center flex-1 text-gray-300">
+            <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+            <span class="text-[9px] font-bold uppercase">สต็อก</span>
         </button>
-        <button onclick="navTo('record')" id="nav-record" class="nav-btn flex flex-col items-center flex-1 py-2 rounded-xl text-slate-300">
-            <span class="text-xl">➕</span><span class="text-[8px] font-bold uppercase mt-1">Add</span>
+        <button onclick="navTo('record')" id="nav-record" class="nav-btn flex flex-col items-center flex-1 text-gray-300">
+            <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
+            <span class="text-[9px] font-bold uppercase">บันทึก</span>
         </button>
-        <button onclick="navTo('history')" id="nav-history" class="nav-btn flex flex-col items-center flex-1 py-2 rounded-xl text-slate-300">
-            <span class="text-xl">📜</span><span class="text-[8px] font-bold uppercase mt-1">Log</span>
+        <button onclick="navTo('history')" id="nav-history" class="nav-btn flex flex-col items-center flex-1 text-gray-300">
+            <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5H7a2 2 2 0 00-2 2v12a2 2 2 0 002 2h10a2 2 2 0 002-2V7a2 2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 2 0 012 2"></path></svg>
+            <span class="text-[9px] font-bold uppercase">ประวัติ</span>
         </button>
     </nav>
 
 <script>
+    // --- JavaScript Logic (คงเดิมทั้งหมดเพื่อความเสถียรของระบบหลังบ้าน) ---
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxxNecfEsN-JsI-yrUq8QJrdsUXUJq5psL9ZYzopocXaNeU_wZBzksDjZgBuymGFjlNrg/exec";
 
     let db = { 
@@ -113,8 +152,7 @@
 
     async function loadDataFromSheets() {
         try {
-            const profitDisplay = document.getElementById('stat-profit');
-            if (profitDisplay) profitDisplay.innerText = "โหลดข้อมูล...";
+            document.getElementById('stat-profit').innerText = "กำลังโหลด...";
             const response = await fetch(SCRIPT_URL + "?action=getAllData&t=" + new Date().getTime());
             const cloudData = await response.json();
             if (cloudData) {
@@ -144,19 +182,16 @@
         const price = parseFloat(document.getElementById('in-price').value);
         const name = document.getElementById('in-name').value || "ซื้อของ";
         if(!price) return alert("กรุณาใส่ราคา");
-        
         const now = new Date();
         const timestamp = String(now.getTime());
         const dateOnly = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
-        
         const row = [timestamp, proj, name, price, dateOnly];
         db[proj].invest.push({ name, price, date: dateOnly, id: timestamp });
         syncToSheets('addRecord', { type: 'Invest', row: row });
-        
         document.getElementById('in-name').value = ''; 
         document.getElementById('in-price').value = '';
         updateUI(); 
-        alert("บันทึกต้นทุนเรียบร้อย");
+        alert("บันทึกต้นทุนเรียบร้อย ✨");
     }
 
     function addSale() {
@@ -164,113 +199,103 @@
         const price = parseFloat(document.getElementById('sale-price-input').value);
         const qty = parseInt(document.getElementById('qty-input').value);
         if(!price) return alert("กรุณาใส่ราคาขาย");
-        
         const now = new Date();
         const total = price * qty;
         const timestamp = String(now.getTime());
         const dateOnly = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
-        
         const row = [timestamp, proj, "ขายสินค้า", qty, total, dateOnly];
         db[proj].sales.push({ name: "ขายสินค้า", qty, price: total, date: dateOnly, id: timestamp });
         syncToSheets('addRecord', { type: 'Sales', row: row });
-        
         updateUI(); 
-        alert("บันทึกการขายเรียบร้อย");
+        alert("บันทึกการขายสำเร็จ 💖");
     }
 
     function addNewItem() {
         const proj = document.getElementById('project-selector').value;
         const name = document.getElementById('new-item-name').value;
         if(!name) return alert("กรุณาใส่ชื่อสินค้า");
-        
         const timestamp = String(Date.now());
-        const newItem = { id: timestamp, name: name, qty: 0 };
-        db[proj].stock.push(newItem);
+        db[proj].stock.push({ id: timestamp, name: name, qty: 0 });
         syncToSheets('updateStock', { project: proj, itemName: name, newQty: 0 });
-        
         document.getElementById('new-item-name').value = '';
         updateUI();
     }
 
     function updateUI() {
-    const proj = document.getElementById('project-selector').value;
-    const monthInput = document.getElementById('month-filter');
-    
-    // --- จุดสำคัญ: ถ้ายังไม่มีการเลือกเดือน ให้ตั้งเป็นเดือนปัจจุบันก่อน ---
-    if (!monthInput.value) {
+        const proj = document.getElementById('project-selector').value;
+        const monthInput = document.getElementById('month-filter');
         const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        monthInput.value = `${year}-${month}`;
+        
+        if (!monthInput.value) {
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            monthInput.value = `${y}-${m}`;
+        }
+
+        const [selectedYear, selectedMonth] = monthInput.value.split('-').map(Number);
+        const currentProject = db[proj] || { invest: [], sales: [], stock: [] };
+
+        const parseDate = (dStr) => {
+            if (!dStr) return { d: 0, m: 0, y: 0 };
+            const parts = String(dStr).split(/[\/\- ]/);
+            if (parts.length < 3) return { d: 0, m: 0, y: 0 };
+            let d = parseInt(parts[0]);
+            let m = parseInt(parts[1]);
+            let y = parseInt(parts[2]);
+            if (y > 2500) y -= 543; 
+            return { d, m, y };
+        };
+
+        const isToday = (item) => {
+            const t = parseDate(item.date);
+            return t.d === now.getDate() && t.m === (now.getMonth() + 1) && t.y === now.getFullYear();
+        };
+
+        const isSelectedMonth = (item) => {
+            const t = parseDate(item.date);
+            return t.m === selectedMonth && t.y === selectedYear;
+        };
+
+        const mInv = (currentProject.invest || []).filter(isSelectedMonth).reduce((s, i) => s + (Number(i.price) || 0), 0);
+        const mSale = (currentProject.sales || []).filter(isSelectedMonth).reduce((s, i) => s + (Number(i.price) || 0), 0);
+        const dSale = (currentProject.sales || []).filter(isToday).reduce((s, i) => s + (Number(i.price) || 0), 0);
+        const dQty = (currentProject.sales || []).filter(isToday).reduce((s, i) => s + (Number(i.qty) || 0), 0);
+
+        document.getElementById('stat-profit').innerText = `฿${(mSale - mInv).toLocaleString()}`;
+        document.getElementById('daily-sales').innerText = `฿${dSale.toLocaleString()}`;
+        document.getElementById('daily-qty').innerText = `${dQty} ${proj === 'tea' ? 'แก้ว' : 'ชิ้น'}`;
+
+        const calcNet = (pKey) => {
+            const p = db[pKey] || { sales: [], invest: [] };
+            const sTotal = (p.sales || []).reduce((s, i) => s + (Number(i.price) || 0), 0);
+            const iTotal = (p.invest || []).reduce((s, i) => s + (Number(i.price) || 0), 0);
+            return sTotal - iTotal;
+        };
+        
+        const netTea = calcNet('tea');
+        const netFlower = calcNet('flower');
+        document.getElementById('net-tea').innerText = `฿${netTea.toLocaleString()}`;
+        document.getElementById('net-flower').innerText = `฿${netFlower.toLocaleString()}`;
+        document.getElementById('total-wallet').innerText = `฿${(netTea + netFlower).toLocaleString()}`;
+
+        const invList = document.getElementById('inventory-list');
+        invList.innerHTML = "";
+        (currentProject.stock || []).forEach(item => {
+            invList.innerHTML += `
+            <div class="bg-rose-50/30 p-4 rounded-3xl border border-rose-100/50 flex flex-col items-center gap-2 relative shadow-sm">
+                <button onclick="deleteItem('${item.name}')" class="absolute top-2 right-2 w-7 h-7 bg-white text-rose-300 rounded-full text-[10px] flex items-center justify-center shadow-sm">🗑️</button>
+                <span class="font-bold text-[12px] text-gray-600 truncate w-3/4 text-center mt-2">${item.name}</span>
+                <div class="text-3xl font-bold text-rose-500 my-1">${item.qty}</div>
+                <div class="flex w-full gap-2 mt-1">
+                    <button onclick="adjustQty('${item.name}', -1)" class="flex-1 bg-white py-2 rounded-xl text-lg font-bold text-rose-300 border border-rose-50 shadow-sm">-</button>
+                    <button onclick="adjustQty('${item.name}', 1)" class="flex-1 bg-rose-400 py-2 rounded-xl text-lg font-bold text-white shadow-md active:scale-95">+</button>
+                </div>
+            </div>`;
+        });
+
+        if(document.getElementById('page-history').classList.contains('active')) renderHistory();
     }
 
-    // ดึงปีและเดือนจากตัวเลือก (รูปแบบ YYYY-MM)
-    const [selectedYear, selectedMonth] = monthInput.value.split('-').map(Number);
-    const currentProject = db[proj] || { invest: [], sales: [], stock: [] };
-
-    // ฟังก์ชันช่วยแกะวันที่ (รองรับ ค.ศ./พ.ศ. เหมือนเดิม)
-    const parseDate = (dStr) => {
-        if (!dStr) return { d: 0, m: 0, y: 0 };
-        const parts = String(dStr).split(/[\/\- ]/);
-        if (parts.length < 3) return { d: 0, m: 0, y: 0 };
-        let d = parseInt(parts[0]);
-        let m = parseInt(parts[1]);
-        let y = parseInt(parts[2]);
-        if (y > 2500) y -= 543; 
-        return { d, m, y };
-    };
-
-    // เช็คว่าเป็น "วันนี้" หรือไม่ (ยังอิงจากนาฬิกาจริง)
-    const isToday = (item) => {
-        const now = new Date();
-        const t = parseDate(item.date);
-        return t.d === now.getDate() && t.m === (now.getMonth() + 1) && t.y === now.getFullYear();
-    };
-
-    // --- แก้ไข Logic การเช็คเดือน: ให้เช็คตามที่ User เลือกจากปุ่ม ---
-    const isSelectedMonth = (item) => {
-        const t = parseDate(item.date);
-        return t.m === selectedMonth && t.y === selectedYear;
-    };
-
-    // คำนวณยอดโดยใช้ Filter ตามเดือนที่เลือก
-    const mInv = (currentProject.invest || []).filter(isSelectedMonth).reduce((s, i) => s + (Number(i.price) || 0), 0);
-    const mSale = (currentProject.sales || []).filter(isSelectedMonth).reduce((s, i) => s + (Number(i.price) || 0), 0);
-    const dSale = (currentProject.sales || []).filter(isToday).reduce((s, i) => s + (Number(i.price) || 0), 0);
-    const dQty = (currentProject.sales || []).filter(isToday).reduce((s, i) => s + (Number(i.qty) || 0), 0);
-
-    // อัปเดตตัวเลขบนหน้าจอ
-    document.getElementById('stat-profit').innerText = `฿${(mSale - mInv).toLocaleString()}`;
-    document.getElementById('daily-sales').innerText = `฿${dSale.toLocaleString()}`;
-    document.getElementById('daily-qty').innerText = `${dQty} ${proj === 'tea' ? 'แก้ว' : 'ชิ้น'}`;
-
-    // ยอดรวมกระเป๋าตังค์ (อันนี้ยังเป็นยอดรวมทั้งหมดทุกเดือนตามเดิม)
-    const calcNet = (pKey) => {
-        const p = db[pKey] || { sales: [], invest: [] };
-        const sTotal = (p.sales || []).reduce((s, i) => s + (Number(i.price) || 0), 0);
-        const iTotal = (p.invest || []).reduce((s, i) => s + (Number(i.price) || 0), 0);
-        return sTotal - iTotal;
-    };
-    document.getElementById('total-wallet').innerText = `฿${(calcNet('tea') + calcNet('flower')).toLocaleString()}`;
-
-    // จัดการส่วนอื่นๆ (Stock/History) เหมือนเดิม...
-    const invList = document.getElementById('inventory-list');
-    invList.innerHTML = "";
-    (currentProject.stock || []).forEach(item => {
-        invList.innerHTML += `
-        <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex flex-col items-center gap-2 shadow-sm relative">
-            <button onclick="deleteItem('${item.name}')" class="absolute top-2 right-2 w-6 h-6 bg-red-50 text-red-400 rounded-full text-[10px] flex items-center justify-center">🗑️</button>
-            <span class="font-bold text-[11px] text-slate-700 truncate w-3/4 text-center">${item.name}</span>
-            <div class="text-2xl font-bold text-blue-600 my-1">${item.qty}</div>
-            <div class="flex w-full gap-2">
-                <button onclick="adjustQty('${item.name}', -1)" class="flex-1 bg-white border border-slate-200 py-2 rounded-lg text-lg font-bold text-slate-400">-</button>
-                <button onclick="adjustQty('${item.name}', 1)" class="flex-1 bg-blue-600 py-2 rounded-lg text-lg font-bold text-white shadow-md active:scale-90">+</button>
-            </div>
-        </div>`;
-    });
-
-    if(document.getElementById('page-history').classList.contains('active')) renderHistory();
-}
     function adjustQty(itemName, change) {
         const proj = document.getElementById('project-selector').value;
         const item = db[proj].stock.find(i => i.name === itemName);
@@ -289,72 +314,74 @@
         updateUI();
     }
 
-   // --- ค้นหาและแทนที่ฟังก์ชัน renderHistory และเพิ่มฟังก์ชัน deleteRecord ในแท็ก <script> ---
+    function renderHistory() {
+        const proj = document.getElementById('project-selector').value;
+        const monthInput = document.getElementById('month-filter');
+        const [selYear, selMonth] = monthInput.value.split('-').map(Number);
+        const list = document.getElementById('log-list');
+        list.innerHTML = "";
+        
+        const parseDate = (dStr) => {
+            const parts = String(dStr).split(/[\/\- ]/);
+            let m = parseInt(parts[1]);
+            let y = parseInt(parts[2]);
+            if (y > 2500) y -= 543;
+            return { m, y };
+        };
 
-function renderHistory() {
-    const proj = document.getElementById('project-selector').value;
-    const list = document.getElementById('log-list');
-    list.innerHTML = "";
-    
-    // รวมข้อมูลและใส่ Type (I = Invest, S = Sales)
-    const all = [
-        ...db[proj].invest.map(i => ({ ...i, t: 'I' })), 
-        ...db[proj].sales.map(s => ({ ...s, t: 'S' }))
-    ].sort((a, b) => b.id - a.id); // เรียงจากใหม่ไปเก่า
-    
-    if (all.length === 0) {
-        list.innerHTML = `<div class="text-center p-10 text-slate-400 text-sm">ไม่มีรายการบันทึก</div>`;
-        return;
-    }
+        const all = [
+            ...db[proj].invest.map(i => ({ ...i, t: 'I' })), 
+            ...db[proj].sales.map(s => ({ ...s, t: 'S' }))
+        ].filter(x => {
+            const d = parseDate(x.date);
+            return d.m === selMonth && d.y === selYear;
+        }).sort((a, b) => b.id - a.id);
+        
+        if (all.length === 0) {
+            list.innerHTML = `<div class="text-center p-12 text-rose-300 text-sm italic">ไม่มีประวัติบันทึกในเดือนนี้</div>`;
+            return;
+        }
 
-    all.forEach(x => {
-        const typeLabel = x.t === 'S' ? 'Sales' : 'Invest';
-        list.innerHTML += `
-        <div class="bg-white p-4 rounded-3xl flex justify-between items-center border-l-8 ${x.t === 'S' ? 'border-emerald-400' : 'border-red-400'} shadow-sm mb-2 group">
-            <div class="flex-1">
-                <div class="flex items-center gap-2">
-                    <span class="text-[8px] font-bold px-2 py-0.5 rounded-full ${x.t === 'S' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}">${typeLabel}</span>
-                    <p class="font-bold text-sm text-slate-700">${x.name} ${x.qty ? 'x'+x.qty : ''}</p>
+        all.forEach(x => {
+            const typeLabel = x.t === 'S' ? 'ขาย' : 'ต้นทุน';
+            const accentColor = x.t === 'S' ? 'border-rose-400' : 'border-gray-300';
+            const textColor = x.t === 'S' ? 'text-rose-500' : 'text-gray-400';
+            list.innerHTML += `
+            <div class="bg-white p-5 rounded-[2rem] flex justify-between items-center border-l-4 ${accentColor} shadow-sm">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2">
+                        <span class="text-[8px] font-bold px-2 py-0.5 rounded-full ${x.t === 'S' ? 'bg-rose-50 text-rose-400' : 'bg-gray-100 text-gray-400'}">${typeLabel}</span>
+                        <p class="font-bold text-sm text-gray-700">${x.name} ${x.qty ? 'x'+x.qty : ''}</p>
+                    </div>
+                    <p class="text-[10px] text-gray-300 mt-1 font-medium">📅 ${x.date}</p>
                 </div>
-                <p class="text-[10px] text-slate-400 mt-1">🆔 ${x.id.slice(-6)} • 📅 ${x.date}</p>
-            </div>
-            <div class="flex items-center gap-3">
-                <p class="font-bold text-lg ${x.t === 'S' ? 'text-emerald-500' : 'text-red-400'}">฿${(Number(x.price) || 0).toLocaleString()}</p>
-                <button onclick="deleteRecord('${typeLabel}', '${x.id}')" class="w-10 h-10 bg-slate-50 text-red-400 rounded-2xl flex items-center justify-center active:bg-red-50 transition-colors">
-                    <span class="text-xs">🗑️</span>
-                </button>
-            </div>
-        </div>`;
-    });
-}
-
-async function deleteRecord(type, id) {
-    if (!confirm(`ยืนยันลบรายการ ${type} นี้หรือไม่?\n(ยอดเงินจะถูกคำนวณใหม่ทันที)`)) return;
-
-    const proj = document.getElementById('project-selector').value;
-    
-    // 1. ลบออกจาก Local Variable (db) เพื่อให้ UI อัปเดตทันที
-    if (type === 'Sales') {
-        db[proj].sales = db[proj].sales.filter(item => String(item.id) !== String(id));
-    } else {
-        db[proj].invest = db[proj].invest.filter(item => String(item.id) !== String(id));
+                <div class="flex items-center gap-4">
+                    <p class="font-bold text-lg ${textColor}">฿${(Number(x.price) || 0).toLocaleString()}</p>
+                    <button onclick="deleteRecord('${x.t === 'S' ? 'Sales' : 'Invest'}', '${x.id}')" class="text-rose-200 hover:text-rose-400">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                </div>
+            </div>`;
+        });
     }
 
-    // 2. อัปเดตหน้าจอ
-    updateUI(); 
-    renderHistory(); // วาดรายการใหม่
-
-    // 3. ส่งคำสั่งไปลบใน Google Sheets
-    await syncToSheets('deleteRecord', { type: type, id: id });
-}
+    async function deleteRecord(type, id) {
+        if (!confirm(`ต้องการลบรายการนี้ใช่ไหม?`)) return;
+        const proj = document.getElementById('project-selector').value;
+        if (type === 'Sales') db[proj].sales = db[proj].sales.filter(i => String(i.id) !== String(id));
+        else db[proj].invest = db[proj].invest.filter(i => String(i.id) !== String(id));
+        updateUI(); 
+        renderHistory();
+        await syncToSheets('deleteRecord', { type: type, id: id });
+    }
 
     function navTo(pageId) {
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.getElementById('page-' + pageId).classList.add('active');
         document.querySelectorAll('.nav-btn').forEach(b => {
-            b.classList.remove('active', 'text-blue-600'); b.classList.add('text-slate-300');
+            b.classList.remove('active'); b.classList.add('text-gray-300');
         });
-        document.getElementById('nav-' + pageId).classList.add('active', 'text-blue-600');
+        document.getElementById('nav-' + pageId).classList.add('active');
         updateUI();
     }
     
