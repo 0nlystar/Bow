@@ -179,58 +179,83 @@
     }
 
     // --- ส่วนการคำนวณ (ใช้เลข Timestamp มาเช็ค จะแม่นที่สุด) ---
-    function updateUI() {
+   function updateUI() {
         const proj = document.getElementById('project-selector').value;
         const now = new Date();
+        const curD = now.getDate();
         const curM = now.getMonth();
         const curY = now.getFullYear();
-        const curD = now.getDate();
 
         const currentProject = db[proj] || { invest: [], sales: [], stock: [] };
 
-        // ฟังก์ชันแปลงค่าวันที่ให้กลายเป็น Date Object (รองรับทั้ง Timestamp และ String เก่า)
+        // ฟังก์ชันแปลงวันที่ให้เป็น Date Object แบบรองรับหลายรูปแบบ
         const toDate = (v) => {
-            if (!v) return new Date(0);
+            if (!v) return null;
             if (typeof v === 'number') return new Date(v);
-            let s = String(v).replace(/-/g, '/'); // เปลี่ยน - เป็น / เพื่อความชัวร์ใน iOS
+            
+            // ล้างค่า string ให้สะอาด (รองรับทั้ง / และ -)
+            let s = String(v).replace(/-/g, '/').trim();
             let d = new Date(s);
-            // ถ้าเป็นปี พ.ศ. ให้แปลงกลับ
+
+            // ถ้า New Date แล้วพัง (Invalid Date) ให้พยายาม Split เอง
+            if (isNaN(d.getTime())) {
+                let datePart = s.split(',')[0].split(' ')[0]; // เอาแค่ 1/4/2026
+                let parts = datePart.split('/');
+                if (parts.length === 3) {
+                    let day = parseInt(parts[0]);
+                    let mon = parseInt(parts[1]) - 1;
+                    let year = parseInt(parts[2]);
+                    if (year > 2500) year -= 543;
+                    d = new Date(year, mon, day);
+                }
+            }
+
+            // ตรวจสอบปี พ.ศ. อีกครั้ง
             if (d.getFullYear() > 2500) d.setFullYear(d.getFullYear() - 543);
-            return d;
+            return isNaN(d.getTime()) ? null : d;
         };
 
         const isMonth = (v) => {
             const d = toDate(v);
+            if (!d) return false;
             return d.getMonth() === curM && d.getFullYear() === curY;
         };
 
         const isToday = (v) => {
             const d = toDate(v);
+            if (!d) return false;
+            // เช็คแค่วัน เดือน ปี ตรงกัน (ไม่สนเวลา)
             return d.getDate() === curD && d.getMonth() === curM && d.getFullYear() === curY;
         };
 
-        // คำนวณ
-        const mInv = currentProject.invest.filter(i => isMonth(i.date)).reduce((s, i) => s + (Number(i.price) || 0), 0);
-        const mSale = currentProject.sales.filter(i => isMonth(i.date)).reduce((s, i) => s + (Number(i.price) || 0), 0);
-        const dSale = currentProject.sales.filter(i => isToday(i.date)).reduce((s, i) => s + (Number(i.price) || 0), 0);
-        const dQty = currentProject.sales.filter(i => isToday(i.date)).reduce((s, i) => s + (Number(i.qty) || 0), 0);
-        
-        // อัปเดต UI
+        // --- เริ่มคำนวณยอด ---
+        const mInv = (currentProject.invest || []).filter(i => isMonth(i.date)).reduce((s, i) => s + (Number(i.price) || 0), 0);
+        const mSale = (currentProject.sales || []).filter(i => isMonth(i.date)).reduce((s, i) => s + (Number(i.price) || 0), 0);
+        const dSale = (currentProject.sales || []).filter(i => isToday(i.date)).reduce((s, i) => s + (Number(i.price) || 0), 0);
+        const dQty = (currentProject.sales || []).filter(i => isToday(i.date)).reduce((s, i) => s + (Number(i.qty) || 0), 0);
+
+        // อัปเดตการแสดงผล
         document.getElementById('current-month-display').innerText = now.toLocaleString('th-TH', { month: 'long', year: 'numeric' });
         document.getElementById('stat-profit').innerText = `฿${(mSale - mInv).toLocaleString()}`;
         document.getElementById('daily-sales').innerText = `฿${dSale.toLocaleString()}`;
         document.getElementById('daily-qty').innerText = `${dQty} ชิ้น`;
         
+        // รวมกำไรสุทธิทุกธุรกิจ (ไม่กรองวันที่)
         const calcTotal = (p) => {
             const pj = db[p] || { sales: [], invest: [] };
             return (pj.sales.reduce((s, i) => s + (Number(i.price) || 0), 0)) - (pj.invest.reduce((s, i) => s + (Number(i.price) || 0), 0));
         };
         document.getElementById('total-wallet').innerText = `฿${(calcTotal('tea') + calcTotal('flower')).toLocaleString()}`;
 
-        // วาด Stock
+        // ส่วนวาด Stock และ Log (เหมือนเดิม)
+        renderStock(currentProject.stock);
+        if(document.getElementById('page-history').classList.contains('active')) renderHistory();
+    }
+
+    function renderStock(stock) {
         const invList = document.getElementById('inventory-list');
         invList.innerHTML = "";
-        currentProject.stock.forEach(item => {
+        (stock || []).forEach(item => {
             invList.innerHTML += `
             <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex flex-col items-center gap-2 shadow-sm relative">
                 <button onclick="removeItem(${item.id})" class="absolute top-2 right-2 w-6 h-6 bg-red-50 text-red-400 rounded-full text-[10px] flex items-center justify-center">🗑️</button>
@@ -242,7 +267,6 @@
                 </div>
             </div>`;
         });
-        if(document.getElementById('page-history').classList.contains('active')) renderHistory();
     }
 
     function renderHistory() {
