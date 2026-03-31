@@ -7,6 +7,7 @@
     <title>Bowwy</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         body { 
             font-family: 'Kanit', sans-serif; 
@@ -184,8 +185,9 @@
 <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxxNecfEsN-JsI-yrUq8QJrdsUXUJq5psL9ZYzopocXaNeU_wZBzksDjZgBuymGFjlNrg/exec";
     let db = { tea: { invest: [], sales: [], stock: [] }, flower: { invest: [], sales: [], stock: [] } };
+    let messageQueue = []; // คิวสำหรับสุ่มข้อความไม่ให้ซ้ำ
 
-    const showDialog = (msg, isConfirm = false) => {
+    const showDialog = (msg, isConfirm = false, autoClose = false) => {
         return new Promise((resolve) => {
             const overlay = document.getElementById('custom-dialog-overlay');
             const message = document.getElementById('dialog-message');
@@ -196,6 +198,11 @@
             message.innerText = msg;
             icon.innerText = isConfirm ? "❓" : "✨";
             cancelBtn.classList.toggle('hidden', !isConfirm);
+            
+            // ถ้าเป็น AutoClose (เช่นคำทักทาย) ให้ซ่อนปุ่มตกลงด้วย
+            if(autoClose) confirmBtn.classList.add('hidden');
+            else confirmBtn.classList.remove('hidden');
+
             overlay.style.display = 'flex';
 
             const close = (res) => {
@@ -205,6 +212,10 @@
                 resolve(res);
             };
 
+            if(autoClose) {
+                setTimeout(() => close(true), 2500);
+            }
+
             confirmBtn.onclick = () => close(true);
             cancelBtn.onclick = () => close(false);
         });
@@ -212,6 +223,22 @@
 
     window.alert = (msg) => showDialog(msg);
     window.confirm = (msg) => showDialog(msg, true);
+
+    // ฟังก์ชันคำทักทายตามช่วงเวลา
+    function showGreeting() {
+        const hr = new Date().getHours();
+        let greet = "";
+        let icon = "";
+        
+        if (hr < 12) { greet = "อรุณสวัสดิ์ยามเช้าครับคนเก่ง วันนี้ลุยกัน! ☀️"; icon = "☀️"; }
+        else if (hr < 17) { greet = "บ่ายแล้ว สู้ๆ นะค้าบ ออเดอร์รัวๆ 🥤"; icon = "🥤"; }
+        else if (hr < 22) { greet = "เย็นนี้กินอะไรดีคนดี ทำงานเหนื่อยไหม 🍲"; icon = "🍲"; }
+        else { greet = "ดึกแล้วนะ พักผ่อนบ้างนะค้าบ เป็นห่วง ✨"; icon = "🌙"; }
+
+        const iconEl = document.getElementById('dialog-icon');
+        iconEl.innerText = icon;
+        showDialog(greet, false, true);
+    }
 
     let startY = 0;
     window.addEventListener('touchstart', (e) => { if (window.scrollY === 0) startY = e.touches[0].pageY; });
@@ -272,33 +299,37 @@
         const timestamp = String(now.getTime());
         const dateOnly = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
         
-        // --- ส่วนที่เพิ่มการสุ่มข้อความ ---
         const messages = [
-            "เก่งมากกคับบี๋ ✨",
-            "ทำดีมาก มาจุ๊บ 👍",
-            "รวยแล้ววว พาไปเที่ยวด้วยนะ 💰",
-            "วันนี้เฮงๆ นะจ้ะ 🔥",
-            "สุดยอดไปเลยค้าบ 💖",
-            "ดูแลตัวเองด้วยจ้า 💖",
-            "คนเก่งของเค้า สุดยอดที่สุดเลย 💖",
-            "แฟนใครเนี่ย ทั้งเก่งทั้งน่ารัก ✨",
-            "เก่งแบบนี้ ต้องรางวัลเป็นที่รักเยอะๆ แล้ว 🎁",
-            "ออเดอร์เข้ารัวๆ รวยแล้วอย่าลืมเค้านะ 🤑",
-             "เอาไปเลย 10 เต็มไม่หัก! 💯",
-              "ที่หนึ่งในใจเค้าเลย 🥇",
-                "ขายดีแบบนี้... คืนนี้เลี้ยงหมูกระทะเลยป่าว? 🥓",
-                 "ไหนดูซิ... เงินเข้ากี่บาท จะได้ขอถูก 🤑",
-                  "เกินต้านมากแม่ ✨",
-            "ออเดอร์ปังมาก! 💸"
+            "เก่งมากกคับบี๋ ✨", "ทำดีมาก มาจุ๊บ 👍", "รวยแล้ววว พาไปเที่ยวด้วยนะ 💰",
+            "วันนี้เฮงๆ นะจ้ะ 🔥", "สุดยอดไปเลยค้าบ 💖", "ดูแลตัวเองด้วยจ้า 💖",
+            "คนเก่งของเค้า สุดยอดที่สุดเลย 💖", "แฟนใครเนี่ย ทั้งเก่งทั้งน่ารัก ✨",
+            "เก่งแบบนี้ ต้องรางวัลเป็นที่รักเยอะๆ แล้ว 🎁", "ออเดอร์เข้ารัวๆ รวยแล้วอย่าลืมเค้านะ 🤑",
+            "เอาไปเลย 10 เต็มไม่หัก! 💯", "ที่หนึ่งในใจเค้าเลย 🥇",
+            "ขายดีแบบนี้... คืนนี้เลี้ยงหมูกระทะเลยป่าว? 🥓", "ไหนดูซิ... เงินเข้ากี่บาท จะได้ขอถูก 🤑",
+            "เกินต้านมากแม่ ✨", "ออเดอร์ปังมาก! 💸", "หยุดรวยกี่โมง? บอกเค้าด้วย 🏃‍♂️",
+            "เก่งขนาดนี้ เย็นนี้ล้างจานด้วยนะจ๊ะ 🧼", "วันนี้ดวงเฮงนะเนี่ย สงสัยเพราะมีแฟนดี 😎"
         ];
-        const randomMsg = messages[Math.floor(Math.random() * messages.length)];
-        // ----------------------------
+
+        // สุ่มแบบไม่ซ้ำ
+        if (messageQueue.length === 0) {
+            messageQueue = [...messages].sort(() => Math.random() - 0.5);
+        }
+        const randomMsg = messageQueue.shift();
 
         db[proj].sales.push({ name: "ขายสินค้า", qty, price: total, date: dateOnly, id: timestamp });
         syncToSheets('addRecord', { type: 'Sales', row: [timestamp, proj, "ขายสินค้า", qty, total, dateOnly] });
         
         updateUI(); 
-        await alert(randomMsg); // แสดงข้อความที่สุ่มมาได้
+
+        // แสดงพลุกระดาษ 🎉
+        confetti({
+            particleCount: 150,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: proj === 'tea' ? ['#fb7185', '#fda4af', '#ffffff'] : ['#6366f1', '#a5b4fc', '#ffffff']
+        });
+
+        await alert(randomMsg);
     }
 
     function addNewItem() {
@@ -436,7 +467,11 @@
     }
     
     function setQty(v) { document.getElementById('qty-input').value = Math.max(1, parseInt(document.getElementById('qty-input').value) + v); }
-    document.addEventListener('DOMContentLoaded', loadDataFromSheets);
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        loadDataFromSheets();
+        showGreeting(); // เรียกใช้คำทักทายตอนเข้าเว็บ
+    });
 </script>
 </body>
 </html>
