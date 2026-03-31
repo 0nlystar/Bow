@@ -23,9 +23,10 @@
                     <option value="tea" class="text-black">🥤 ร้านชาผลไม้รวม</option>
                     <option value="flower" class="text-black">🌸 งานลวดกำมะหยี่</option>
                 </select>
-                <div class="bg-blue-600 px-4 py-3 rounded-2xl font-bold text-[10px] flex items-center justify-center min-w-[120px]">
-                    <span id="current-month-display">กำลังโหลด...</span>
-                </div>
+               <div class="bg-blue-600 rounded-2xl font-bold flex items-center justify-center min-w-[140px] overflow-hidden border border-blue-400 shadow-inner">
+    <input type="month" id="month-filter" onchange="updateUI()" 
+        class="bg-transparent text-white text-[11px] p-3 outline-none border-none cursor-pointer w-full text-center uppercase">
+</div>
             </div>
             <div class="text-center">
                 <p class="text-[9px] opacity-50 uppercase tracking-widest mb-1">กำไรสุทธิเดือนนี้ (Online)</p>
@@ -192,80 +193,84 @@
     }
 
     function updateUI() {
-        const proj = document.getElementById('project-selector').value;
+    const proj = document.getElementById('project-selector').value;
+    const monthInput = document.getElementById('month-filter');
+    
+    // --- จุดสำคัญ: ถ้ายังไม่มีการเลือกเดือน ให้ตั้งเป็นเดือนปัจจุบันก่อน ---
+    if (!monthInput.value) {
         const now = new Date();
-        const currentProject = db[proj] || { invest: [], sales: [], stock: [] };
-
-        // --- แก้ไขจุดที่ 1: อัปเดตข้อความบนปุ่มเดือน ---
-        const monthBtn = document.getElementById('current-month-display');
-        if (monthBtn) {
-            monthBtn.innerText = now.toLocaleString('th-TH', { month: 'long', year: 'numeric' });
-        }
-
-        // --- แก้ไขจุดที่ 2: Logic วันที่แบบตัวเลข (รองรับ 1/4/2026) ---
-        const currD = now.getDate();
-        const currM = now.getMonth() + 1;
-        const currY = now.getFullYear();
-
-        const parseDate = (dStr) => {
-            if (!dStr) return { d: 0, m: 0, y: 0 };
-            const parts = String(dStr).split(/[\/\- ]/);
-            if (parts.length < 3) return { d: 0, m: 0, y: 0 };
-            let d = parseInt(parts[0]);
-            let m = parseInt(parts[1]);
-            let y = parseInt(parts[2]);
-            if (y > 2500) y -= 543; // แปลง พ.ศ. เป็น ค.ศ.
-            return { d, m, y };
-        };
-
-        const isToday = (item) => {
-            const t = parseDate(item.date);
-            return t.d === currD && t.m === currM && t.y === currY;
-        };
-
-        const isThisMonth = (item) => {
-            const t = parseDate(item.date);
-            return t.m === currM && t.y === currY;
-        };
-
-        // คำนวณยอด
-        const mInv = (currentProject.invest || []).filter(isThisMonth).reduce((s, i) => s + (Number(i.price) || 0), 0);
-        const mSale = (currentProject.sales || []).filter(isThisMonth).reduce((s, i) => s + (Number(i.price) || 0), 0);
-        const dSale = (currentProject.sales || []).filter(isToday).reduce((s, i) => s + (Number(i.price) || 0), 0);
-        const dQty = (currentProject.sales || []).filter(isToday).reduce((s, i) => s + (Number(i.qty) || 0), 0);
-
-        // อัปเดต UI ตัวเลข
-        document.getElementById('stat-profit').innerText = `฿${(mSale - mInv).toLocaleString()}`;
-        document.getElementById('daily-sales').innerText = `฿${dSale.toLocaleString()}`;
-        document.getElementById('daily-qty').innerText = `${dQty} ${proj === 'tea' ? 'แก้ว' : 'ชิ้น'}`;
-
-        const calcNet = (pKey) => {
-            const p = db[pKey] || { sales: [], invest: [] };
-            const sTotal = (p.sales || []).reduce((s, i) => s + (Number(i.price) || 0), 0);
-            const iTotal = (p.invest || []).reduce((s, i) => s + (Number(i.price) || 0), 0);
-            return sTotal - iTotal;
-        };
-        document.getElementById('total-wallet').innerText = `฿${(calcNet('tea') + calcNet('flower')).toLocaleString()}`;
-
-        // จัดการ Stock
-        const invList = document.getElementById('inventory-list');
-        invList.innerHTML = "";
-        (currentProject.stock || []).forEach(item => {
-            invList.innerHTML += `
-            <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex flex-col items-center gap-2 shadow-sm relative">
-                <button onclick="deleteItem('${item.name}')" class="absolute top-2 right-2 w-6 h-6 bg-red-50 text-red-400 rounded-full text-[10px] flex items-center justify-center">🗑️</button>
-                <span class="font-bold text-[11px] text-slate-700 truncate w-3/4 text-center">${item.name}</span>
-                <div class="text-2xl font-bold text-blue-600 my-1">${item.qty}</div>
-                <div class="flex w-full gap-2">
-                    <button onclick="adjustQty('${item.name}', -1)" class="flex-1 bg-white border border-slate-200 py-2 rounded-lg text-lg font-bold text-slate-400">-</button>
-                    <button onclick="adjustQty('${item.name}', 1)" class="flex-1 bg-blue-600 py-2 rounded-lg text-lg font-bold text-white shadow-md active:scale-90">+</button>
-                </div>
-            </div>`;
-        });
-
-        if(document.getElementById('page-history').classList.contains('active')) renderHistory();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        monthInput.value = `${year}-${month}`;
     }
 
+    // ดึงปีและเดือนจากตัวเลือก (รูปแบบ YYYY-MM)
+    const [selectedYear, selectedMonth] = monthInput.value.split('-').map(Number);
+    const currentProject = db[proj] || { invest: [], sales: [], stock: [] };
+
+    // ฟังก์ชันช่วยแกะวันที่ (รองรับ ค.ศ./พ.ศ. เหมือนเดิม)
+    const parseDate = (dStr) => {
+        if (!dStr) return { d: 0, m: 0, y: 0 };
+        const parts = String(dStr).split(/[\/\- ]/);
+        if (parts.length < 3) return { d: 0, m: 0, y: 0 };
+        let d = parseInt(parts[0]);
+        let m = parseInt(parts[1]);
+        let y = parseInt(parts[2]);
+        if (y > 2500) y -= 543; 
+        return { d, m, y };
+    };
+
+    // เช็คว่าเป็น "วันนี้" หรือไม่ (ยังอิงจากนาฬิกาจริง)
+    const isToday = (item) => {
+        const now = new Date();
+        const t = parseDate(item.date);
+        return t.d === now.getDate() && t.m === (now.getMonth() + 1) && t.y === now.getFullYear();
+    };
+
+    // --- แก้ไข Logic การเช็คเดือน: ให้เช็คตามที่ User เลือกจากปุ่ม ---
+    const isSelectedMonth = (item) => {
+        const t = parseDate(item.date);
+        return t.m === selectedMonth && t.y === selectedYear;
+    };
+
+    // คำนวณยอดโดยใช้ Filter ตามเดือนที่เลือก
+    const mInv = (currentProject.invest || []).filter(isSelectedMonth).reduce((s, i) => s + (Number(i.price) || 0), 0);
+    const mSale = (currentProject.sales || []).filter(isSelectedMonth).reduce((s, i) => s + (Number(i.price) || 0), 0);
+    const dSale = (currentProject.sales || []).filter(isToday).reduce((s, i) => s + (Number(i.price) || 0), 0);
+    const dQty = (currentProject.sales || []).filter(isToday).reduce((s, i) => s + (Number(i.qty) || 0), 0);
+
+    // อัปเดตตัวเลขบนหน้าจอ
+    document.getElementById('stat-profit').innerText = `฿${(mSale - mInv).toLocaleString()}`;
+    document.getElementById('daily-sales').innerText = `฿${dSale.toLocaleString()}`;
+    document.getElementById('daily-qty').innerText = `${dQty} ${proj === 'tea' ? 'แก้ว' : 'ชิ้น'}`;
+
+    // ยอดรวมกระเป๋าตังค์ (อันนี้ยังเป็นยอดรวมทั้งหมดทุกเดือนตามเดิม)
+    const calcNet = (pKey) => {
+        const p = db[pKey] || { sales: [], invest: [] };
+        const sTotal = (p.sales || []).reduce((s, i) => s + (Number(i.price) || 0), 0);
+        const iTotal = (p.invest || []).reduce((s, i) => s + (Number(i.price) || 0), 0);
+        return sTotal - iTotal;
+    };
+    document.getElementById('total-wallet').innerText = `฿${(calcNet('tea') + calcNet('flower')).toLocaleString()}`;
+
+    // จัดการส่วนอื่นๆ (Stock/History) เหมือนเดิม...
+    const invList = document.getElementById('inventory-list');
+    invList.innerHTML = "";
+    (currentProject.stock || []).forEach(item => {
+        invList.innerHTML += `
+        <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex flex-col items-center gap-2 shadow-sm relative">
+            <button onclick="deleteItem('${item.name}')" class="absolute top-2 right-2 w-6 h-6 bg-red-50 text-red-400 rounded-full text-[10px] flex items-center justify-center">🗑️</button>
+            <span class="font-bold text-[11px] text-slate-700 truncate w-3/4 text-center">${item.name}</span>
+            <div class="text-2xl font-bold text-blue-600 my-1">${item.qty}</div>
+            <div class="flex w-full gap-2">
+                <button onclick="adjustQty('${item.name}', -1)" class="flex-1 bg-white border border-slate-200 py-2 rounded-lg text-lg font-bold text-slate-400">-</button>
+                <button onclick="adjustQty('${item.name}', 1)" class="flex-1 bg-blue-600 py-2 rounded-lg text-lg font-bold text-white shadow-md active:scale-90">+</button>
+            </div>
+        </div>`;
+    });
+
+    if(document.getElementById('page-history').classList.contains('active')) renderHistory();
+}
     function adjustQty(itemName, change) {
         const proj = document.getElementById('project-selector').value;
         const item = db[proj].stock.find(i => i.name === itemName);
