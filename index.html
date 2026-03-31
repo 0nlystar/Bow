@@ -102,8 +102,8 @@
         </button>
     </nav>
 
-   <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyJcCjL2J3FeKD6z7SDii9oImnP3heiGMDZxYgz5ZAgjf_GhG0SpuhMIWA8EC0zPMUANA/exec";
+ <script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzlTaAORAZOZ0_atSrna4lbfS1IAHdn4JNbSOkvXgJ5QtzVSTbODZMjNBLjl8TIuBs_wA/exec";
 
     let db = { 
         tea: { invest: [], sales: [], stock: [] },
@@ -137,7 +137,7 @@
         } catch (e) { console.error("Sync Error", e); }
     }
 
-    // --- ส่วนบันทึกข้อมูล (ปรับ Format วันที่ให้ตรงกับที่ UI ค้นหา) ---
+    // --- ส่วนบันทึกข้อมูล (ตัดเวลาทิ้ง เก็บแค่ วัน/เดือน/ปี) ---
     function addInvest() {
         const proj = document.getElementById('project-selector').value;
         const price = parseFloat(document.getElementById('in-price').value);
@@ -147,13 +147,12 @@
         const now = new Date();
         const timestamp = now.getTime();
         
-        // ปรับตรงนี้: ส่งวันที่ไปลง Sheet ให้เป็นรูปแบบ d/m/yyyy เพื่อให้ฟังก์ชัน updateUI หาเจอ
-        const dateStr = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()} ${now.getHours()}:${now.getMinutes()}`;
+        // ตัดเวลาทิ้ง เก็บแค่ d/m/yyyy
+        const dateOnly = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
         
-        const row = [timestamp, proj, name, price, dateStr];
+        const row = [timestamp, proj, name, price, dateOnly];
         
-        // เก็บลง db ในเครื่อง (ใช้ dateStr แทน timestamp เพื่อให้ UI ค้นหาเจอทันที)
-        db[proj].invest.push({ name, price, date: dateStr, id: timestamp });
+        db[proj].invest.push({ name, price, date: dateOnly, id: timestamp });
         syncToSheets('addRecord', { type: 'Invest', row: row });
         
         document.getElementById('in-name').value = ''; 
@@ -172,20 +171,19 @@
         const total = price * qty;
         const timestamp = now.getTime();
         
-        // ปรับตรงนี้: ส่งวันที่ไปลง Sheet ให้เป็นรูปแบบ d/m/yyyy
-        const dateStr = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()} ${now.getHours()}:${now.getMinutes()}`;
+        // ตัดเวลาทิ้ง เก็บแค่ d/m/yyyy
+        const dateOnly = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
         
-        const row = [timestamp, proj, "ขายสินค้า", qty, total, dateStr];
+        const row = [timestamp, proj, "ขายสินค้า", qty, total, dateOnly];
         
-        // เก็บลง db ในเครื่อง
-        db[proj].sales.push({ name: "ขายสินค้า", qty, price: total, date: dateStr, id: timestamp });
+        db[proj].sales.push({ name: "ขายสินค้า", qty, price: total, date: dateOnly, id: timestamp });
         syncToSheets('addRecord', { type: 'Sales', row: row });
         
         updateUI(); 
         alert("บันทึกการขายเรียบร้อย");
     }
 
-    // --- ส่วนการคำนวณ (ใช้ Text Matching ค้นหาจาก String วันที่) ---
+    // --- ส่วนการคำนวณ (ใช้ Text Matching ค้นหาจาก String วันที่ที่ตัดเวลาแล้ว) ---
     function updateUI() {
         const proj = document.getElementById('project-selector').value;
         const now = new Date();
@@ -195,13 +193,13 @@
         const curM = now.getMonth() + 1; 
         const curY = now.getFullYear();
 
-        // คำค้นหาหลัก
-        const todayStr1 = `${curD}/${curM}/${curY}`;       // ค.ศ.
-        const todayStr2 = `${curD}/${curM}/${curY + 543}`; // พ.ศ.
+        // คำค้นหาหลัก (ดักทั้ง ค.ศ. และ พ.ศ.)
+        const todayStr1 = `${curD}/${curM}/${curY}`;       
+        const todayStr2 = `${curD}/${curM}/${curY + 543}`; 
         const monthStr1 = `/${curM}/${curY}`;
         const monthStr2 = `/${curM}/${curY + 543}`;
 
-        // ฟังก์ชันเช็ค (ตัดปัญหาเรื่อง timestamp โดยแปลงทุกอย่างเป็น String ก่อนเช็ค)
+        // ฟังก์ชันเช็ค: เน้นเปรียบเทียบแบบ String ข้อความ
         const isToday = (item) => {
             const d = String(item.date);
             return d.includes(todayStr1) || d.includes(todayStr2);
@@ -231,7 +229,7 @@
         };
         document.getElementById('total-wallet').innerText = `฿${(calcAllTime('tea') + calcAllTime('flower')).toLocaleString()}`;
 
-        // ส่วนวาด Stock และ History (เหมือนเดิม)
+        // ส่วนวาด Stock
         const invList = document.getElementById('inventory-list');
         invList.innerHTML = "";
         (currentProject.stock || []).forEach(item => {
@@ -250,7 +248,6 @@
         if(document.getElementById('page-history').classList.contains('active')) renderHistory();
     }
 
-    // แก้ไขฟังก์ชัน renderHistory เพื่อรองรับวันที่ทั้ง 2 แบบ
     function renderHistory() {
         const proj = document.getElementById('project-selector').value;
         const list = document.getElementById('log-list');
@@ -261,19 +258,11 @@
         ].sort((a,b)=>b.id-a.id);
         
         all.forEach(x => {
-            let d;
-            if (typeof x.date === 'number') {
-                d = new Date(x.date);
-            } else {
-                // พยายามจัดการวันที่ที่เป็น String
-                d = new Date(String(x.date).replace(/-/g, '/'));
-            }
-            
             list.innerHTML += `
             <div class="bg-white p-4 rounded-xl flex justify-between items-center border-l-4 ${x.t==='S'?'border-emerald-400':'border-red-400'} shadow-sm">
                 <div>
                     <p class="font-bold text-xs text-slate-700">${x.name} ${x.qty ? 'x'+x.qty : ''}</p>
-                    <p class="text-[8px] text-slate-400">${d instanceof Date && !isNaN(d) ? d.toLocaleString('th-TH') : x.date}</p>
+                    <p class="text-[10px] text-slate-400">${x.date}</p>
                 </div>
                 <p class="font-bold ${x.t==='S'?'text-emerald-500':'text-red-400'}">฿${(Number(x.price) || 0).toLocaleString()}</p>
             </div>`;
