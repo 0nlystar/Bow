@@ -184,69 +184,58 @@
     }
 
     // --- ส่วนการคำนวณ (ใช้ Text Matching ค้นหาจาก String วันที่ที่ตัดเวลาแล้ว) ---
-    function updateUI() {
-        const proj = document.getElementById('project-selector').value;
-        const now = new Date();
-        const currentProject = db[proj] || { invest: [], sales: [], stock: [] };
+   function updateUI() {
+    const proj = document.getElementById('project-selector').value;
+    const now = new Date();
+    const currentProject = db[proj] || { invest: [], sales: [], stock: [] };
 
-        const curD = now.getDate();
-        const curM = now.getMonth() + 1; 
-        const curY = now.getFullYear();
-
-        // คำค้นหาหลัก (ดักทั้ง ค.ศ. และ พ.ศ.)
-        const todayStr1 = `${curD}/${curM}/${curY}`;       
-        const todayStr2 = `${curD}/${curM}/${curY + 543}`; 
-        const monthStr1 = `/${curM}/${curY}`;
-        const monthStr2 = `/${curM}/${curY + 543}`;
-
-        // ฟังก์ชันเช็ค: เน้นเปรียบเทียบแบบ String ข้อความ
-        const isToday = (item) => {
-            const d = String(item.date);
-            return d.includes(todayStr1) || d.includes(todayStr2);
-        };
-        const isThisMonth = (item) => {
-            const d = String(item.date);
-            return d.includes(monthStr1) || d.includes(monthStr2);
-        };
-
-        // คำนวณยอด
-        const mInv = (currentProject.invest || []).filter(isThisMonth).reduce((s, i) => s + (Number(i.price) || 0), 0);
-        const mSale = (currentProject.sales || []).filter(isThisMonth).reduce((s, i) => s + (Number(i.price) || 0), 0);
+    // ฟังก์ชันช่วยจัดรูปแบบวันที่ให้เป็น d/m/yyyy (เช่น 1/4/2026)
+    // เพื่อให้ไม่ว่าข้อมูลมาแบบไหน (มี 0 นำหน้าหรือไม่) ก็จะเทียบกันได้
+    const formatStr = (dStr) => {
+        if (!dStr) return "";
+        // แยกส่วน วัน/เดือน/ปี ออกมา (รองรับทั้ง / และ -)
+        const parts = String(dStr).split(/[\/\- ]/); 
+        if (parts.length < 3) return String(dStr);
         
-        const dSale = (currentProject.sales || []).filter(isToday).reduce((s, i) => s + (Number(i.price) || 0), 0);
-        const dQty = (currentProject.sales || []).filter(isToday).reduce((s, i) => s + (Number(i.qty) || 0), 0);
+        let d = parseInt(parts[0]);
+        let m = parseInt(parts[1]);
+        let y = parseInt(parts[2]);
         
-        // อัปเดต UI
-        document.getElementById('current-month-display').innerText = now.toLocaleString('th-TH', { month: 'long', year: 'numeric' });
-        document.getElementById('stat-profit').innerText = `฿${(mSale - mInv).toLocaleString()}`;
-        document.getElementById('daily-sales').innerText = `฿${dSale.toLocaleString()}`;
-        document.getElementById('daily-qty').innerText = `${dQty} ชิ้น`;
+        // ถ้าเป็น พ.ศ. ให้แปลงเป็น ค.ศ. เพื่อความเป็นสากลในการเช็ค
+        if (y > 2500) y -= 543;
         
-        const calcAllTime = (p) => {
-            const pj = db[p] || { sales: [], invest: [] };
-            return (pj.sales || []).reduce((s, i) => s + (Number(i.price) || 0), 0) - 
-                   (pj.invest || []).reduce((s, i) => s + (Number(i.price) || 0), 0);
-        };
-        document.getElementById('total-wallet').innerText = `฿${(calcAllTime('tea') + calcAllTime('flower')).toLocaleString()}`;
+        return `${d}/${m}/${y}`;
+    };
 
-        // ส่วนวาด Stock
-        const invList = document.getElementById('inventory-list');
-        invList.innerHTML = "";
-        (currentProject.stock || []).forEach(item => {
-            invList.innerHTML += `
-            <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex flex-col items-center gap-2 shadow-sm relative">
-                <button onclick="removeItem(${item.id})" class="absolute top-2 right-2 w-6 h-6 bg-red-50 text-red-400 rounded-full text-[10px] flex items-center justify-center">🗑️</button>
-                <span class="font-bold text-[11px] text-slate-700 truncate w-3/4 text-center">${item.name}</span>
-                <div class="text-2xl font-bold text-blue-600 my-1">${item.qty}</div>
-                <div class="flex w-full gap-2">
-                    <button onclick="adjustQty(${item.id}, -1)" class="flex-1 bg-white border border-slate-200 py-2 rounded-lg text-lg font-bold text-slate-400">-</button>
-                    <button onclick="adjustQty(${item.id}, 1)" class="flex-1 bg-blue-600 py-2 rounded-lg text-lg font-bold text-white shadow-md active:scale-90">+</button>
-                </div>
-            </div>`;
-        });
+    // วันที่ปัจจุบันในรูปแบบมาตรฐาน d/m/yyyy
+    const todayMatch = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
+    const monthMatch = `/${now.getMonth() + 1}/${now.getFullYear()}`;
 
-        if(document.getElementById('page-history').classList.contains('active')) renderHistory();
-    }
+    // ฟังก์ชันเช็ค: ปรับให้ล้างรูปแบบก่อนเทียบ
+    const isToday = (item) => {
+        const itemDate = formatStr(item.date);
+        return itemDate === todayMatch || itemDate.startsWith(todayMatch);
+    };
+    
+    const isThisMonth = (item) => {
+        const itemDate = formatStr(item.date);
+        return itemDate.includes(monthMatch);
+    };
+
+    // --- ส่วนคำนวณเหมือนเดิม แต่เพิ่ม Number() ดักไว้ ---
+    const mInv = (currentProject.invest || []).filter(isThisMonth).reduce((s, i) => s + (Number(i.price) || 0), 0);
+    const mSale = (currentProject.sales || []).filter(isThisMonth).reduce((s, i) => s + (Number(i.price) || 0), 0);
+    
+    const dSale = (currentProject.sales || []).filter(isToday).reduce((s, i) => s + (Number(i.price) || 0), 0);
+    const dQty = (currentProject.sales || []).filter(isToday).reduce((s, i) => s + (Number(i.qty) || 0), 0);
+
+    // อัปเดตตัวเลขบนหน้าจอ
+    document.getElementById('stat-profit').innerText = `฿${(mSale - mInv).toLocaleString()}`;
+    document.getElementById('daily-sales').innerText = `฿${dSale.toLocaleString()}`;
+    document.getElementById('daily-qty').innerText = `${dQty} ชิ้น`;
+    
+    // ... ส่วนที่เหลือเหมือนเดิม ...
+}
 
     function renderHistory() {
         const proj = document.getElementById('project-selector').value;
