@@ -103,7 +103,7 @@
     </nav>
 
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbybaIIRRjuos_vsip-hvK9Vg00hGWEvF2EbqguvG1NS4mB3kl78_ceXFs6jW_2Chbbk0A/exec";
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby5M2YunjRMpRVjagtWmCupvdzZZPl3e89w-54GvW0-uwuGIFqXSu77WWV5ZPlP0Xo81A/exec";
 
         let db = { 
             tea: { invest: [], sales: [], stock: [] },
@@ -216,43 +216,62 @@
         function save() { updateUI(); }
 
         function updateUI() {
-            const proj = document.getElementById('project-selector').value;
-            const today = getDayKey();
-            const thisMonth = getMonthKey();
+    const proj = document.getElementById('project-selector').value;
+    const today = getDayKey(); // เช่น "31/3/2569"
+    const thisMonth = getMonthKey(); // เช่น "มีนาคม 2569"
 
-            const mInv = db[proj].invest.filter(i => i.monthGroup === thisMonth || (i.date && i.date.includes(thisMonth))).reduce((s, i) => s + i.price, 0);
-            const mSale = db[proj].sales.filter(i => i.monthGroup === thisMonth || (i.date && i.date.includes(thisMonth))).reduce((s, i) => s + i.price, 0);
-            const dSale = db[proj].sales.filter(i => i.dayGroup === today || (i.date && i.date.includes(today))).reduce((s, i) => s + i.price, 0);
-            const dQty = db[proj].sales.filter(i => i.dayGroup === today || (i.date && i.date.includes(today))).reduce((s, i) => s + i.qty, 0);
-            
-            const calcTotal = (p) => db[p].sales.reduce((s, i) => s + i.price, 0) - db[p].invest.reduce((s, i) => s + i.price, 0);
+    const currentProject = db[proj] || { invest: [], sales: [], stock: [] };
 
-            document.getElementById('current-month-display').innerText = thisMonth;
-            document.getElementById('stat-profit').innerText = `฿${(mSale - mInv).toLocaleString()}`;
-            document.getElementById('daily-sales').innerText = `฿${dSale.toLocaleString()}`;
-            document.getElementById('daily-qty').innerText = `${dQty} แก้ว/ชิ้น`;
-            document.getElementById('total-wallet').innerText = `฿${(calcTotal('tea') + calcTotal('flower')).toLocaleString()}`;
+    // ปรับการ Filter: เช็คว่าใน String วันที่ มีคำว่าเดือน/ปี หรือวันที่ปัจจุบันอยู่หรือไม่
+    const mInv = (currentProject.invest || []).filter(i => 
+        String(i.date).includes(thisMonth) || String(i.date).includes(today.split('/')[1] + '/' + today.split('/')[2])
+    ).reduce((s, i) => s + (Number(i.price) || 0), 0);
 
-            const invList = document.getElementById('inventory-list');
-            invList.innerHTML = "";
-            db[proj].stock.forEach(item => {
-                invList.innerHTML += `
-                <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex flex-col items-center gap-2 shadow-sm relative">
-                    <button onclick="removeItem(${item.id})" class="absolute top-2 right-2 w-6 h-6 bg-red-50 text-red-400 rounded-full text-[10px] flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors">🗑️</button>
-                    
-                    <div class="w-full flex justify-between items-start">
-                        <span class="font-bold text-[11px] text-slate-700 truncate w-3/4">${item.name}</span>
-                    </div>
-                    <div class="text-2xl font-bold text-blue-600 my-1">${item.qty}</div>
-                    <div class="flex w-full gap-2">
-                        <button onclick="adjustQty(${item.id}, -1)" class="flex-1 bg-white border border-slate-200 py-2 rounded-lg text-lg font-bold text-slate-400 active:scale-90">-</button>
-                        <button onclick="adjustQty(${item.id}, 1)" class="flex-1 bg-blue-600 py-2 rounded-lg text-lg font-bold text-white shadow-md active:scale-90">+</button>
-                    </div>
-                </div>`;
-            });
+    const mSale = (currentProject.sales || []).filter(i => 
+        String(i.date).includes(thisMonth) || String(i.date).includes(today.split('/')[1] + '/' + today.split('/')[2])
+    ).reduce((s, i) => s + (Number(i.price) || 0), 0);
 
-            if(document.getElementById('page-history').classList.contains('active')) renderHistory();
-        }
+    const dSale = (currentProject.sales || []).filter(i => 
+        String(i.date).includes(today)
+    ).reduce((s, i) => s + (Number(i.price) || 0), 0);
+
+    const dQty = (currentProject.sales || []).filter(i => 
+        String(i.date).includes(today)
+    ).reduce((s, i) => s + (Number(i.qty) || 0), 0);
+    
+    // แสดงผลบนหน้าจอ
+    document.getElementById('current-month-display').innerText = thisMonth;
+    document.getElementById('stat-profit').innerText = `฿${(mSale - mInv).toLocaleString()}`;
+    document.getElementById('daily-sales').innerText = `฿${dSale.toLocaleString()}`;
+    document.getElementById('daily-qty').innerText = `${dQty} แก้ว/ชิ้น`;
+    
+    // คำนวณรวมกระเป๋า (Total Wallet)
+    const calcTotal = (p) => {
+        const pj = db[p] || { sales: [], invest: [] };
+        const totalS = (pj.sales || []).reduce((s, i) => s + (Number(i.price) || 0), 0);
+        const totalI = (pj.invest || []).reduce((s, i) => s + (Number(i.price) || 0), 0);
+        return totalS - totalI;
+    };
+    document.getElementById('total-wallet').innerText = `฿${(calcTotal('tea') + calcTotal('flower')).toLocaleString()}`;
+
+    // วาดรายการ Stock
+    const invList = document.getElementById('inventory-list');
+    invList.innerHTML = "";
+    (currentProject.stock || []).forEach(item => {
+        invList.innerHTML += `
+        <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex flex-col items-center gap-2 shadow-sm relative">
+            <button onclick="removeItem(${item.id})" class="absolute top-2 right-2 w-6 h-6 bg-red-50 text-red-400 rounded-full text-[10px] flex items-center justify-center">🗑️</button>
+            <span class="font-bold text-[11px] text-slate-700 truncate w-3/4">${item.name}</span>
+            <div class="text-2xl font-bold text-blue-600 my-1">${item.qty}</div>
+            <div class="flex w-full gap-2">
+                <button onclick="adjustQty(${item.id}, -1)" class="flex-1 bg-white border border-slate-200 py-2 rounded-lg text-lg font-bold text-slate-400">-</button>
+                <button onclick="adjustQty(${item.id}, 1)" class="flex-1 bg-blue-600 py-2 rounded-lg text-lg font-bold text-white shadow-md">+</button>
+            </div>
+        </div>`;
+    });
+
+    if(document.getElementById('page-history').classList.contains('active')) renderHistory();
+}
 
         function renderHistory() {
             const proj = document.getElementById('project-selector').value;
