@@ -103,7 +103,7 @@
     </nav>
 
 <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbycCRU_DQKkhpsCiDn1PzTzGMdkiSbx1dxVPRc-D26iXTFW0f64TfiC4H1uRGKKveSXNQ/exec";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxxNecfEsN-JsI-yrUq8QJrdsUXUJq5psL9ZYzopocXaNeU_wZBzksDjZgBuymGFjlNrg/exec";
 
     let db = { 
         tea: { invest: [], sales: [], stock: [] },
@@ -284,26 +284,64 @@
         updateUI();
     }
 
-    function renderHistory() {
-        const proj = document.getElementById('project-selector').value;
-        const list = document.getElementById('log-list');
-        list.innerHTML = "";
-        const all = [
-            ...db[proj].invest.map(i=>({...i, t:'I'})), 
-            ...db[proj].sales.map(s=>({...s, t:'S'}))
-        ].sort((a,b)=>b.id-a.id);
-        
-        all.forEach(x => {
-            list.innerHTML += `
-            <div class="bg-white p-4 rounded-xl flex justify-between items-center border-l-4 ${x.t==='S'?'border-emerald-400':'border-red-400'} shadow-sm">
-                <div>
-                    <p class="font-bold text-xs text-slate-700">${x.name} ${x.qty ? 'x'+x.qty : ''}</p>
-                    <p class="text-[10px] text-slate-400">${x.date}</p>
-                </div>
-                <p class="font-bold ${x.t==='S'?'text-emerald-500':'text-red-400'}">฿${(Number(x.price) || 0).toLocaleString()}</p>
-            </div>`;
-        });
+   // --- ค้นหาและแทนที่ฟังก์ชัน renderHistory และเพิ่มฟังก์ชัน deleteRecord ในแท็ก <script> ---
+
+function renderHistory() {
+    const proj = document.getElementById('project-selector').value;
+    const list = document.getElementById('log-list');
+    list.innerHTML = "";
+    
+    // รวมข้อมูลและใส่ Type (I = Invest, S = Sales)
+    const all = [
+        ...db[proj].invest.map(i => ({ ...i, t: 'I' })), 
+        ...db[proj].sales.map(s => ({ ...s, t: 'S' }))
+    ].sort((a, b) => b.id - a.id); // เรียงจากใหม่ไปเก่า
+    
+    if (all.length === 0) {
+        list.innerHTML = `<div class="text-center p-10 text-slate-400 text-sm">ไม่มีรายการบันทึก</div>`;
+        return;
     }
+
+    all.forEach(x => {
+        const typeLabel = x.t === 'S' ? 'Sales' : 'Invest';
+        list.innerHTML += `
+        <div class="bg-white p-4 rounded-3xl flex justify-between items-center border-l-8 ${x.t === 'S' ? 'border-emerald-400' : 'border-red-400'} shadow-sm mb-2 group">
+            <div class="flex-1">
+                <div class="flex items-center gap-2">
+                    <span class="text-[8px] font-bold px-2 py-0.5 rounded-full ${x.t === 'S' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}">${typeLabel}</span>
+                    <p class="font-bold text-sm text-slate-700">${x.name} ${x.qty ? 'x'+x.qty : ''}</p>
+                </div>
+                <p class="text-[10px] text-slate-400 mt-1">🆔 ${x.id.slice(-6)} • 📅 ${x.date}</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <p class="font-bold text-lg ${x.t === 'S' ? 'text-emerald-500' : 'text-red-400'}">฿${(Number(x.price) || 0).toLocaleString()}</p>
+                <button onclick="deleteRecord('${typeLabel}', '${x.id}')" class="w-10 h-10 bg-slate-50 text-red-400 rounded-2xl flex items-center justify-center active:bg-red-50 transition-colors">
+                    <span class="text-xs">🗑️</span>
+                </button>
+            </div>
+        </div>`;
+    });
+}
+
+async function deleteRecord(type, id) {
+    if (!confirm(`ยืนยันลบรายการ ${type} นี้หรือไม่?\n(ยอดเงินจะถูกคำนวณใหม่ทันที)`)) return;
+
+    const proj = document.getElementById('project-selector').value;
+    
+    // 1. ลบออกจาก Local Variable (db) เพื่อให้ UI อัปเดตทันที
+    if (type === 'Sales') {
+        db[proj].sales = db[proj].sales.filter(item => String(item.id) !== String(id));
+    } else {
+        db[proj].invest = db[proj].invest.filter(item => String(item.id) !== String(id));
+    }
+
+    // 2. อัปเดตหน้าจอ
+    updateUI(); 
+    renderHistory(); // วาดรายการใหม่
+
+    // 3. ส่งคำสั่งไปลบใน Google Sheets
+    await syncToSheets('deleteRecord', { type: type, id: id });
+}
 
     function navTo(pageId) {
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
