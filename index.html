@@ -103,22 +103,19 @@
     </nav>
 
    <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzjljBcBWx3_3MGugShtulWt62AwMK_Cl1HPhiaruKQK4y__SC2OhdKOYVNB9JH0UUqTg/exec";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyyUNnX-yPjsHoY6Aq2Vs9eSg7KNFazbOianmH0AnENBFDb4smrvBbFpU2Cs3c4hQ/exec";
 
     let db = { 
         tea: { invest: [], sales: [], stock: [] },
         flower: { invest: [], sales: [], stock: [] }
     };
 
-    // --- 1. การดึงข้อมูลแบบ Real-time และป้องกัน Cache ---
     async function loadDataFromSheets() {
         try {
             const profitDisplay = document.getElementById('stat-profit');
             profitDisplay.innerText = "โหลดข้อมูล...";
-
             const response = await fetch(SCRIPT_URL + "?action=getAllData&t=" + new Date().getTime());
             const cloudData = await response.json();
-            
             if (cloudData) {
                 db = cloudData;
                 updateUI(); 
@@ -129,7 +126,6 @@
         }
     }
 
-    // --- 2. การส่งข้อมูลไปบันทึก ---
     async function syncToSheets(action, payload) {
         try {
             await fetch(SCRIPT_URL, {
@@ -141,60 +137,19 @@
         } catch (e) { console.error("Sync Error", e); }
     }
 
-    function navTo(pageId) {
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-        document.getElementById('page-' + pageId).classList.add('active');
-        document.querySelectorAll('.nav-btn').forEach(b => {
-            b.classList.remove('active', 'text-blue-600');
-            b.classList.add('text-slate-300');
-        });
-        document.getElementById('nav-' + pageId).classList.add('active', 'text-blue-600');
-        document.getElementById('nav-' + pageId).classList.remove('text-slate-300');
-        updateUI();
-    }
-
-    function addNewItem() {
-        const proj = document.getElementById('project-selector').value;
-        const name = document.getElementById('new-item-name').value.trim();
-        if(!name) return;
-        const newItem = { id: Date.now(), name, qty: 0 };
-        db[proj].stock.push(newItem);
-        document.getElementById('new-item-name').value = '';
-        syncToSheets('updateStock', { project: proj, itemName: name, newQty: 0 });
-        updateUI();
-    }
-
-    function adjustQty(id, change) {
-        const proj = document.getElementById('project-selector').value;
-        const item = db[proj].stock.find(i => i.id === id);
-        if(item) { 
-            item.qty = Math.max(0, item.qty + change); 
-            syncToSheets('updateStock', { project: proj, itemName: item.name, newQty: item.qty });
-            updateUI(); 
-        }
-    }
-
-    function removeItem(id) {
-        const proj = document.getElementById('project-selector').value;
-        const item = db[proj].stock.find(i => i.id === id);
-        if(item && confirm(`คุณต้องการลบ "${item.name}" ออกจากสต็อกใช่หรือไม่?`)) {
-            syncToSheets('deleteStock', { project: proj, itemName: item.name });
-            db[proj].stock = db[proj].stock.filter(i => i.id !== id);
-            updateUI();
-        }
-    }
-
+    // --- ส่วนบันทึกข้อมูล (ปรับให้ส่งข้อมูลมาตรฐาน) ---
     function addInvest() {
         const proj = document.getElementById('project-selector').value;
         const price = parseFloat(document.getElementById('in-price').value);
         const name = document.getElementById('in-name').value || "ซื้อของ";
         if(!price) return alert("กรุณาใส่ราคา");
         
-        const timestamp = Date.now();
-        const dateStr = new Date().toLocaleString('th-TH');
-        // ส่งทั้ง ID และวันที่แบบข้อความไปบันทึกใน Sheet
-        const row = [timestamp, proj, name, price, dateStr];
+        const now = new Date();
+        const timestamp = now.getTime();
+        // บันทึกลง Sheet แบบ ISO (YYYY-MM-DD) เพื่อให้ Sheet อ่านง่ายแต่คำนวณแม่น
+        const dateStr = now.getFullYear() + "-" + (now.getMonth()+1) + "-" + now.getDate() + " " + now.getHours() + ":" + now.getMinutes();
         
+        const row = [timestamp, proj, name, price, dateStr];
         db[proj].invest.push({ name, price, date: timestamp, id: timestamp });
         syncToSheets('addRecord', { type: 'Invest', row: row });
         
@@ -210,11 +165,12 @@
         const qty = parseInt(document.getElementById('qty-input').value);
         if(!price) return alert("กรุณาใส่ราคาขาย");
         
+        const now = new Date();
         const total = price * qty;
-        const timestamp = Date.now();
-        const dateStr = new Date().toLocaleString('th-TH');
-        const row = [timestamp, proj, "ขายสินค้า", qty, total, dateStr];
+        const timestamp = now.getTime();
+        const dateStr = now.getFullYear() + "-" + (now.getMonth()+1) + "-" + now.getDate() + " " + now.getHours() + ":" + now.getMinutes();
         
+        const row = [timestamp, proj, "ขายสินค้า", qty, total, dateStr];
         db[proj].sales.push({ name: "ขายสินค้า", qty, price: total, date: timestamp, id: timestamp });
         syncToSheets('addRecord', { type: 'Sales', row: row });
         
@@ -222,123 +178,115 @@
         alert("บันทึกการขายเรียบร้อย");
     }
 
-    function setQty(v) { document.getElementById('qty-input').value = Math.max(1, parseInt(document.getElementById('qty-input').value) + v); }
+    // --- ส่วนการคำนวณ (ใช้เลข Timestamp มาเช็ค จะแม่นที่สุด) ---
+    function updateUI() {
+        const proj = document.getElementById('project-selector').value;
+        const now = new Date();
+        const curM = now.getMonth();
+        const curY = now.getFullYear();
+        const curD = now.getDate();
 
-    // --- 3. ฟังก์ชันหลักในการวาดหน้าจอ (ปรับปรุงใหม่เพื่อความแม่นยำ) ---
-   function updateUI() {
-            const proj = document.getElementById('project-selector').value;
-            const now = new Date();
-            const currentMonth = now.getMonth();
-            const currentYear = now.getFullYear();
+        const currentProject = db[proj] || { invest: [], sales: [], stock: [] };
 
-            const currentProject = db[proj] || { invest: [], sales: [], stock: [] };
+        // ฟังก์ชันแปลงค่าวันที่ให้กลายเป็น Date Object (รองรับทั้ง Timestamp และ String เก่า)
+        const toDate = (v) => {
+            if (!v) return new Date(0);
+            if (typeof v === 'number') return new Date(v);
+            let s = String(v).replace(/-/g, '/'); // เปลี่ยน - เป็น / เพื่อความชัวร์ใน iOS
+            let d = new Date(s);
+            // ถ้าเป็นปี พ.ศ. ให้แปลงกลับ
+            if (d.getFullYear() > 2500) d.setFullYear(d.getFullYear() - 543);
+            return d;
+        };
 
-            // ฟังก์ชันแปลงวันที่ให้เป็น Date Object ที่แม่นยำ
-            const parseToDate = (dateVal) => {
-                if (!dateVal) return null;
-                if (typeof dateVal === 'number') return new Date(dateVal);
-                
-                let s = String(dateVal).trim();
-                // แยกวันที่จาก "31/3/2569, 23:54:22" หรือ "31/3/2569"
-                let datePart = s.split(',')[0].split(' ')[0].trim(); 
-                let parts = datePart.split('/');
-                
-                if (parts.length === 3) {
-                    let d = parseInt(parts[0]);
-                    let m = parseInt(parts[1]) - 1;
-                    let y = parseInt(parts[2]);
-                    if (y > 2500) y -= 543; // แปลง พ.ศ. เป็น ค.ศ.
-                    return new Date(y, m, d);
-                }
-                
-                let d = new Date(dateVal);
-                return isNaN(d.getTime()) ? null : d;
-            };
+        const isMonth = (v) => {
+            const d = toDate(v);
+            return d.getMonth() === curM && d.getFullYear() === curY;
+        };
 
-            // เช็คว่าเป็นเดือนนี้หรือไม่
-            const isThisMonth = (dateVal) => {
-                const d = parseToDate(dateVal);
-                if (!d) return false;
-                return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-            };
+        const isToday = (v) => {
+            const d = toDate(v);
+            return d.getDate() === curD && d.getMonth() === curM && d.getFullYear() === curY;
+        };
 
-            // เช็คว่าเป็นวันนี้หรือไม่
-            const isToday = (dateVal) => {
-                const d = parseToDate(dateVal);
-                if (!d) return false;
-                return d.getDate() === now.getDate() && 
-                       d.getMonth() === currentMonth && 
-                       d.getFullYear() === currentYear;
-            };
+        // คำนวณ
+        const mInv = currentProject.invest.filter(i => isMonth(i.date)).reduce((s, i) => s + (Number(i.price) || 0), 0);
+        const mSale = currentProject.sales.filter(i => isMonth(i.date)).reduce((s, i) => s + (Number(i.price) || 0), 0);
+        const dSale = currentProject.sales.filter(i => isToday(i.date)).reduce((s, i) => s + (Number(i.price) || 0), 0);
+        const dQty = currentProject.sales.filter(i => isToday(i.date)).reduce((s, i) => s + (Number(i.qty) || 0), 0);
+        
+        // อัปเดต UI
+        document.getElementById('current-month-display').innerText = now.toLocaleString('th-TH', { month: 'long', year: 'numeric' });
+        document.getElementById('stat-profit').innerText = `฿${(mSale - mInv).toLocaleString()}`;
+        document.getElementById('daily-sales').innerText = `฿${dSale.toLocaleString()}`;
+        document.getElementById('daily-qty').innerText = `${dQty} ชิ้น`;
+        
+        const calcTotal = (p) => {
+            const pj = db[p] || { sales: [], invest: [] };
+            return (pj.sales.reduce((s, i) => s + (Number(i.price) || 0), 0)) - (pj.invest.reduce((s, i) => s + (Number(i.price) || 0), 0));
+        };
+        document.getElementById('total-wallet').innerText = `฿${(calcTotal('tea') + calcTotal('flower')).toLocaleString()}`;
 
-            // --- ส่วนการคำนวณ ---
-            const mInv = (currentProject.invest || []).filter(i => isThisMonth(i.date)).reduce((s, i) => s + (Number(i.price) || 0), 0);
-            const mSale = (currentProject.sales || []).filter(i => isThisMonth(i.date)).reduce((s, i) => s + (Number(i.price) || 0), 0);
-            
-            const dSale = (currentProject.sales || []).filter(i => isToday(i.date)).reduce((s, i) => s + (Number(i.price) || 0), 0);
-            const dQty = (currentProject.sales || []).filter(i => isToday(i.date)).reduce((s, i) => s + (Number(i.qty) || 0), 0);
-            
-            // --- อัปเดตการแสดงผลบนหน้าจอ ---
-            const monthLabel = now.toLocaleString('th-TH', { month: 'long', year: 'numeric' });
-            document.getElementById('current-month-display').innerText = monthLabel;
-            
-            // กำไรเดือนนี้
-            document.getElementById('stat-profit').innerText = `฿${(mSale - mInv).toLocaleString()}`;
-            // ยอดขายวันนี้
-            document.getElementById('daily-sales').innerText = `฿${dSale.toLocaleString()}`;
-            document.getElementById('daily-qty').innerText = `${dQty} ชิ้น`;
-            
-            // รวมกำไรทุกธุรกิจ (อันนี้ไม่กรองวันที่ เลยแสดงผลปกติ)
-            const calcAllTime = (p) => {
-                const pj = db[p] || { sales: [], invest: [] };
-                return (pj.sales || []).reduce((s, i) => s + (Number(i.price) || 0), 0) - 
-                       (pj.invest || []).reduce((s, i) => s + (Number(i.price) || 0), 0);
-            };
-            document.getElementById('total-wallet').innerText = `฿${(calcAllTime('tea') + calcAllTime('flower')).toLocaleString()}`;
+        // วาด Stock
+        const invList = document.getElementById('inventory-list');
+        invList.innerHTML = "";
+        currentProject.stock.forEach(item => {
+            invList.innerHTML += `
+            <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex flex-col items-center gap-2 shadow-sm relative">
+                <button onclick="removeItem(${item.id})" class="absolute top-2 right-2 w-6 h-6 bg-red-50 text-red-400 rounded-full text-[10px] flex items-center justify-center">🗑️</button>
+                <span class="font-bold text-[11px] text-slate-700 truncate w-3/4 text-center">${item.name}</span>
+                <div class="text-2xl font-bold text-blue-600 my-1">${item.qty}</div>
+                <div class="flex w-full gap-2">
+                    <button onclick="adjustQty(${item.id}, -1)" class="flex-1 bg-white border border-slate-200 py-2 rounded-lg text-lg font-bold text-slate-400">-</button>
+                    <button onclick="adjustQty(${item.id}, 1)" class="flex-1 bg-blue-600 py-2 rounded-lg text-lg font-bold text-white shadow-md active:scale-90">+</button>
+                </div>
+            </div>`;
+        });
+        if(document.getElementById('page-history').classList.contains('active')) renderHistory();
+    }
 
-            // วาดรายการ Stock
-            const invList = document.getElementById('inventory-list');
-            invList.innerHTML = "";
-            (currentProject.stock || []).forEach(item => {
-                invList.innerHTML += `
-                <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex flex-col items-center gap-2 shadow-sm relative">
-                    <button onclick="removeItem(${item.id})" class="absolute top-2 right-2 w-6 h-6 bg-red-50 text-red-400 rounded-full text-[10px] flex items-center justify-center">🗑️</button>
-                    <span class="font-bold text-[11px] text-slate-700 truncate w-3/4 text-center">${item.name}</span>
-                    <div class="text-2xl font-bold text-blue-600 my-1">${item.qty}</div>
-                    <div class="flex w-full gap-2">
-                        <button onclick="adjustQty(${item.id}, -1)" class="flex-1 bg-white border border-slate-200 py-2 rounded-lg text-lg font-bold text-slate-400">-</button>
-                        <button onclick="adjustQty(${item.id}, 1)" class="flex-1 bg-blue-600 py-2 rounded-lg text-lg font-bold text-white shadow-md active:scale-90">+</button>
-                    </div>
-                </div>`;
-            });
-
-            if(document.getElementById('page-history').classList.contains('active')) renderHistory();
-        }
     function renderHistory() {
         const proj = document.getElementById('project-selector').value;
         const list = document.getElementById('log-list');
         list.innerHTML = "";
-        const currentProject = db[proj] || { invest: [], sales: [] };
-        
         const all = [
-            ...currentProject.invest.map(i=>({...i, t:'I'})), 
-            ...currentProject.sales.map(s=>({...s, t:'S'}))
+            ...db[proj].invest.map(i=>({...i, t:'I'})), 
+            ...db[proj].sales.map(s=>({...s, t:'S'}))
         ].sort((a,b)=>b.id-a.id);
         
         all.forEach(x => {
-            const displayDate = typeof x.date === 'number' ? new Date(x.date).toLocaleString('th-TH') : x.date;
+            const d = typeof x.date === 'number' ? new Date(x.date) : new Date(String(x.date).replace(/-/g, '/'));
             list.innerHTML += `
             <div class="bg-white p-4 rounded-xl flex justify-between items-center border-l-4 ${x.t==='S'?'border-emerald-400':'border-red-400'} shadow-sm">
                 <div>
                     <p class="font-bold text-xs text-slate-700">${x.name} ${x.qty ? 'x'+x.qty : ''}</p>
-                    <p class="text-[8px] text-slate-400">${displayDate}</p>
+                    <p class="text-[8px] text-slate-400">${d.toLocaleString('th-TH')}</p>
                 </div>
                 <p class="font-bold ${x.t==='S'?'text-emerald-500':'text-red-400'}">฿${(Number(x.price) || 0).toLocaleString()}</p>
             </div>`;
         });
     }
 
+    // ฟังก์ชันนำทาง/ปรับจำนวน (เหมือนเดิม)
+    function navTo(pageId) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById('page-' + pageId).classList.add('active');
+        document.querySelectorAll('.nav-btn').forEach(b => {
+            b.classList.remove('active', 'text-blue-600'); b.classList.add('text-slate-300');
+        });
+        document.getElementById('nav-' + pageId).classList.add('active', 'text-blue-600');
+        document.getElementById('nav-' + pageId).classList.remove('text-slate-300');
+        updateUI();
+    }
+    function setQty(v) { document.getElementById('qty-input').value = Math.max(1, parseInt(document.getElementById('qty-input').value) + v); }
+    function adjustQty(id, change) {
+        const proj = document.getElementById('project-selector').value;
+        const item = db[proj].stock.find(i => i.id === id);
+        if(item) { item.qty = Math.max(0, item.qty + change); syncToSheets('updateStock', { project: proj, itemName: item.name, newQty: item.qty }); updateUI(); }
+    }
+
     document.addEventListener('DOMContentLoaded', loadDataFromSheets);
+</script>
 </script>
 </body>
 </html>
