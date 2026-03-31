@@ -215,46 +215,68 @@
 
         function save() { updateUI(); }
 
-        function updateUI() {
+       function updateUI() {
     const proj = document.getElementById('project-selector').value;
-    const today = getDayKey(); // เช่น "31/3/2569"
-    const thisMonth = getMonthKey(); // เช่น "มีนาคม 2569"
+    const now = new Date();
+    const currentMonth = now.getMonth(); // 0-11
+    const currentYear = now.getFullYear(); // 2026
 
     const currentProject = db[proj] || { invest: [], sales: [], stock: [] };
 
-    // ปรับการ Filter: เช็คว่าใน String วันที่ มีคำว่าเดือน/ปี หรือวันที่ปัจจุบันอยู่หรือไม่
-    const mInv = (currentProject.invest || []).filter(i => 
-        String(i.date).includes(thisMonth) || String(i.date).includes(today.split('/')[1] + '/' + today.split('/')[2])
-    ).reduce((s, i) => s + (Number(i.price) || 0), 0);
+    // --- ฟังก์ชันเทพ: แปลง String วันที่ในชีต ให้เป็น Date Object ของ JS ---
+    const parseDate = (dateStr) => {
+        if (!dateStr) return null;
+        const s = String(dateStr);
+        // แยกส่วนประกอบ 31/3/2026 หรือ 31/3/2569
+        const parts = s.split(' ')[0].split('/'); 
+        if (parts.length < 3) return null;
 
-    const mSale = (currentProject.sales || []).filter(i => 
-        String(i.date).includes(thisMonth) || String(i.date).includes(today.split('/')[1] + '/' + today.split('/')[2])
-    ).reduce((s, i) => s + (Number(i.price) || 0), 0);
+        let d = parseInt(parts[0]);
+        let m = parseInt(parts[1]) - 1; // JS Month เริ่มที่ 0
+        let y = parseInt(parts[2]);
 
-    const dSale = (currentProject.sales || []).filter(i => 
-        String(i.date).includes(today)
-    ).reduce((s, i) => s + (Number(i.price) || 0), 0);
+        if (y > 2500) y -= 543; // ถ้าเป็น พ.ศ. ให้แปลงเป็น ค.ศ.
+        return new Date(y, m, d);
+    };
 
-    const dQty = (currentProject.sales || []).filter(i => 
-        String(i.date).includes(today)
-    ).reduce((s, i) => s + (Number(i.qty) || 0), 0);
+    // --- กรองข้อมูล: ต้องเป็น "เดือนนี้" และ "ปีนี้" เท่านั้น ---
+    const isThisMonthAndYear = (dateStr) => {
+        const d = parseDate(dateStr);
+        if (!d) return false;
+        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    };
+
+    // --- กรองข้อมูล: ต้องเป็น "วันนี้" เท่านั้น ---
+    const isToday = (dateStr) => {
+        const d = parseDate(dateStr);
+        if (!d) return false;
+        return d.getDate() === now.getDate() && 
+               d.getMonth() === currentMonth && 
+               d.getFullYear() === currentYear;
+    };
+
+    // คำนวณยอดเงิน
+    const mInv = (currentProject.invest || []).filter(i => isThisMonthAndYear(i.date)).reduce((s, i) => s + (Number(i.price) || 0), 0);
+    const mSale = (currentProject.sales || []).filter(i => isThisMonthAndYear(i.date)).reduce((s, i) => s + (Number(i.price) || 0), 0);
     
-    // แสดงผลบนหน้าจอ
-    document.getElementById('current-month-display').innerText = thisMonth;
+    const dSale = (currentProject.sales || []).filter(i => isToday(i.date)).reduce((s, i) => s + (Number(i.price) || 0), 0);
+    const dQty = (currentProject.sales || []).filter(i => isToday(i.date)).reduce((s, i) => s + (Number(i.qty) || 0), 0);
+    
+    // อัปเดต UI
+    const monthDisplay = now.toLocaleString('th-TH', { month: 'long', year: 'numeric' });
+    document.getElementById('current-month-display').innerText = monthDisplay;
     document.getElementById('stat-profit').innerText = `฿${(mSale - mInv).toLocaleString()}`;
     document.getElementById('daily-sales').innerText = `฿${dSale.toLocaleString()}`;
     document.getElementById('daily-qty').innerText = `${dQty} แก้ว/ชิ้น`;
     
-    // คำนวณรวมกระเป๋า (Total Wallet)
     const calcTotal = (p) => {
         const pj = db[p] || { sales: [], invest: [] };
-        const totalS = (pj.sales || []).reduce((s, i) => s + (Number(i.price) || 0), 0);
-        const totalI = (pj.invest || []).reduce((s, i) => s + (Number(i.price) || 0), 0);
-        return totalS - totalI;
+        return (pj.sales || []).reduce((s, i) => s + (Number(i.price) || 0), 0) - 
+               (pj.invest || []).reduce((s, i) => s + (Number(i.price) || 0), 0);
     };
     document.getElementById('total-wallet').innerText = `฿${(calcTotal('tea') + calcTotal('flower')).toLocaleString()}`;
 
-    // วาดรายการ Stock
+    // แสดง Stock (เหมือนเดิม)
     const invList = document.getElementById('inventory-list');
     invList.innerHTML = "";
     (currentProject.stock || []).forEach(item => {
@@ -265,7 +287,7 @@
             <div class="text-2xl font-bold text-blue-600 my-1">${item.qty}</div>
             <div class="flex w-full gap-2">
                 <button onclick="adjustQty(${item.id}, -1)" class="flex-1 bg-white border border-slate-200 py-2 rounded-lg text-lg font-bold text-slate-400">-</button>
-                <button onclick="adjustQty(${item.id}, 1)" class="flex-1 bg-blue-600 py-2 rounded-lg text-lg font-bold text-white shadow-md">+</button>
+                <button onclick="adjustQty(${item.id}, 1)" class="flex-1 bg-blue-600 py-2 rounded-lg text-lg font-bold text-white shadow-md active:scale-90">+</button>
             </div>
         </div>`;
     });
