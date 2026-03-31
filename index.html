@@ -102,7 +102,7 @@
         </button>
     </nav>
 
- <script>
+<script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyD8_AHgSxuNBnJVgXHSJsVFReP7pZTSyDGqrAZSu8stMDq2s8cTOB7ZJnPceuFmKB2mA/exec";
 
     let db = { 
@@ -113,7 +113,7 @@
     async function loadDataFromSheets() {
         try {
             const profitDisplay = document.getElementById('stat-profit');
-            profitDisplay.innerText = "โหลดข้อมูล...";
+            if (profitDisplay) profitDisplay.innerText = "โหลดข้อมูล...";
             const response = await fetch(SCRIPT_URL + "?action=getAllData&t=" + new Date().getTime());
             const cloudData = await response.json();
             if (cloudData) {
@@ -128,16 +128,17 @@
 
     async function syncToSheets(action, payload) {
         try {
+            // ใช้ fetch แบบส่งค่าไปเฉยๆ สำหรับ no-cors
             await fetch(SCRIPT_URL, {
                 method: 'POST',
                 mode: 'no-cors',
                 cache: 'no-cache',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action, ...payload })
             });
         } catch (e) { console.error("Sync Error", e); }
     }
 
-    // --- ส่วนบันทึกข้อมูล (ตัดเวลาทิ้ง เก็บแค่ วัน/เดือน/ปี) ---
     function addInvest() {
         const proj = document.getElementById('project-selector').value;
         const price = parseFloat(document.getElementById('in-price').value);
@@ -145,7 +146,7 @@
         if(!price) return alert("กรุณาใส่ราคา");
         
         const now = new Date();
-        const timestamp = now.getTime();
+        const timestamp = String(now.getTime());
         const dateOnly = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
         
         const row = [timestamp, proj, name, price, dateOnly];
@@ -167,7 +168,7 @@
         
         const now = new Date();
         const total = price * qty;
-        const timestamp = now.getTime();
+        const timestamp = String(now.getTime());
         const dateOnly = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
         
         const row = [timestamp, proj, "ขายสินค้า", qty, total, dateOnly];
@@ -179,7 +180,22 @@
         alert("บันทึกการขายเรียบร้อย");
     }
 
-    // --- ส่วนการคำนวณ (ใช้ Text Matching ค้นหาจาก String วันที่ที่ตัดเวลาแล้ว) ---
+    // --- ส่วนเพิ่มสินค้าใหม่เข้าไปใน Stock ---
+    function addNewItem() {
+        const proj = document.getElementById('project-selector').value;
+        const name = document.getElementById('new-item-name').value;
+        if(!name) return alert("กรุณาใส่ชื่อสินค้า");
+        
+        const timestamp = String(Date.now());
+        const newItem = { id: timestamp, name: name, qty: 0 };
+        
+        db[proj].stock.push(newItem);
+        syncToSheets('updateStock', { project: proj, itemName: name, newQty: 0 });
+        
+        document.getElementById('new-item-name').value = '';
+        updateUI();
+    }
+
     function updateUI() {
         const proj = document.getElementById('project-selector').value;
         const now = new Date();
@@ -202,45 +218,58 @@
         const isToday = (item) => formatStr(item.date) === todayMatch;
         const isThisMonth = (item) => formatStr(item.date).includes(monthMatch);
 
-        // คำนวณยอดของโปรเจกต์ปัจจุบัน
         const mInv = (currentProject.invest || []).filter(isThisMonth).reduce((s, i) => s + (Number(i.price) || 0), 0);
         const mSale = (currentProject.sales || []).filter(isThisMonth).reduce((s, i) => s + (Number(i.price) || 0), 0);
         const dSale = (currentProject.sales || []).filter(isToday).reduce((s, i) => s + (Number(i.price) || 0), 0);
         const dQty = (currentProject.sales || []).filter(isToday).reduce((s, i) => s + (Number(i.qty) || 0), 0);
 
-        // อัปเดต UI หลัก
-        document.getElementById('current-month-display').innerText = now.toLocaleString('th-TH', { month: 'long', year: 'numeric' });
         document.getElementById('stat-profit').innerText = `฿${(mSale - mInv).toLocaleString()}`;
         document.getElementById('daily-sales').innerText = `฿${dSale.toLocaleString()}`;
         document.getElementById('daily-qty').innerText = `${dQty} ${proj === 'tea' ? 'แก้ว' : 'ชิ้น'}`;
 
-        // คำนวณยอดรวมทุกธุรกิจ (Total Wallet)
         const calcNet = (pKey) => {
             const p = db[pKey] || { sales: [], invest: [] };
-            const sales = (p.sales || []).reduce((s, i) => s + (Number(i.price) || 0), 0);
-            const invest = (p.invest || []).reduce((s, i) => s + (Number(i.price) || 0), 0);
-            return sales - invest;
+            const sTotal = (p.sales || []).reduce((s, i) => s + (Number(i.price) || 0), 0);
+            const iTotal = (p.invest || []).reduce((s, i) => s + (Number(i.price) || 0), 0);
+            return sTotal - iTotal;
         };
-        const totalNet = calcNet('tea') + calcNet('flower');
-        document.getElementById('total-wallet').innerText = `฿${totalNet.toLocaleString()}`;
+        document.getElementById('total-wallet').innerText = `฿${(calcNet('tea') + calcNet('flower')).toLocaleString()}`;
 
-        // ส่วนวาด Stock
+        // จัดการหน้า Stock (แก้ไขเครื่องหมาย ' ' ใน onclick)
         const invList = document.getElementById('inventory-list');
         invList.innerHTML = "";
         (currentProject.stock || []).forEach(item => {
             invList.innerHTML += `
             <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex flex-col items-center gap-2 shadow-sm relative">
-                <button onclick="removeItem(${item.id})" class="absolute top-2 right-2 w-6 h-6 bg-red-50 text-red-400 rounded-full text-[10px] flex items-center justify-center">🗑️</button>
+                <button onclick="deleteItem('${item.name}')" class="absolute top-2 right-2 w-6 h-6 bg-red-50 text-red-400 rounded-full text-[10px] flex items-center justify-center">🗑️</button>
                 <span class="font-bold text-[11px] text-slate-700 truncate w-3/4 text-center">${item.name}</span>
                 <div class="text-2xl font-bold text-blue-600 my-1">${item.qty}</div>
                 <div class="flex w-full gap-2">
-                    <button onclick="adjustQty(${item.id}, -1)" class="flex-1 bg-white border border-slate-200 py-2 rounded-lg text-lg font-bold text-slate-400">-</button>
-                    <button onclick="adjustQty(${item.id}, 1)" class="flex-1 bg-blue-600 py-2 rounded-lg text-lg font-bold text-white shadow-md active:scale-90">+</button>
+                    <button onclick="adjustQty('${item.name}', -1)" class="flex-1 bg-white border border-slate-200 py-2 rounded-lg text-lg font-bold text-slate-400">-</button>
+                    <button onclick="adjustQty('${item.name}', 1)" class="flex-1 bg-blue-600 py-2 rounded-lg text-lg font-bold text-white shadow-md active:scale-90">+</button>
                 </div>
             </div>`;
         });
 
         if(document.getElementById('page-history').classList.contains('active')) renderHistory();
+    }
+
+    function adjustQty(itemName, change) {
+        const proj = document.getElementById('project-selector').value;
+        const item = db[proj].stock.find(i => i.name === itemName);
+        if(item) { 
+            item.qty = Math.max(0, parseInt(item.qty) + change); 
+            syncToSheets('updateStock', { project: proj, itemName: item.name, newQty: item.qty }); 
+            updateUI(); 
+        }
+    }
+
+    function deleteItem(itemName) {
+        if(!confirm('ยืนยันลบสินค้า?')) return;
+        const proj = document.getElementById('project-selector').value;
+        db[proj].stock = db[proj].stock.filter(i => i.name !== itemName);
+        syncToSheets('deleteStock', { project: proj, itemName: itemName });
+        updateUI();
     }
 
     function renderHistory() {
@@ -275,16 +304,6 @@
     }
     
     function setQty(v) { document.getElementById('qty-input').value = Math.max(1, parseInt(document.getElementById('qty-input').value) + v); }
-    
-    function adjustQty(id, change) {
-        const proj = document.getElementById('project-selector').value;
-        const item = db[proj].stock.find(i => i.id === id);
-        if(item) { 
-            item.qty = Math.max(0, parseInt(item.qty) + change); 
-            syncToSheets('updateStock', { project: proj, itemName: item.name, newQty: item.qty }); 
-            updateUI(); 
-        }
-    }
 
     document.addEventListener('DOMContentLoaded', loadDataFromSheets);
 </script>
