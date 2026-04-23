@@ -18,6 +18,7 @@
         }
         body.theme-tea { background-color: #fff1f2; }
         body.theme-flower { background-color: #f5f3ff; }
+        body.theme-fruit { background-color: #f0fdf4; } /* ธีมร้านผลไม้ใหม่ */
 
         .page { display: none; animation: fadeIn 0.2s ease-out; }
         .page.active { display: block; }
@@ -76,6 +77,7 @@
                 <select id="project-selector" onchange="updateUI()" class="flex-1 bg-white/20 p-3 rounded-2xl font-semibold outline-none border border-white/30 text-sm text-white">
                     <option value="tea" class="text-gray-800">🥤 ร้านชาผลไม้รวม</option>
                     <option value="flower" class="text-gray-800">🌸 งานลวดกำมะหยี่</option>
+                    <option value="fruitset" class="text-gray-800">🧺 ผลไม้จัดเซ็ต</option>
                 </select>
                 <div class="bg-white/20 rounded-2xl flex items-center justify-center min-w-[120px] border border-white/30 overflow-hidden">
                     <input type="month" id="month-filter" onchange="updateUI()" 
@@ -91,7 +93,6 @@
 
     <main class="max-w-md mx-auto p-5">
         
-
 <style>
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     .animate-spin-slow { animation: spin 5s linear infinite; }
@@ -104,14 +105,20 @@
                 <p id="daily-qty" class="text-sm font-medium text-gray-400 bg-rose-50 inline-block px-4 py-1 rounded-full">0 รายการ</p>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
-                <div class="bg-white/60 p-5 rounded-[2.5rem] border border-rose-50 text-center shadow-sm">
-                    <p class="text-[10px] text-gray-400 font-bold uppercase mb-1">สะสม: ร้านชา</p>
-                    <h3 id="net-tea" class="text-lg font-bold text-rose-500">฿0</h3>
-                </div>
-                <div class="bg-white/60 p-5 rounded-[2.5rem] border border-rose-50 text-center shadow-sm">
-                    <p class="text-[10px] text-gray-400 font-bold uppercase mb-1">สะสม: งานลวด</p>
-                    <h3 id="net-flower" class="text-lg font-bold text-rose-500">฿0</h3>
+            <div class="grid grid-cols-1 gap-4">
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="bg-white/60 p-4 rounded-[2rem] border border-rose-50 text-center shadow-sm">
+                        <p class="text-[9px] text-gray-400 font-bold uppercase mb-1">ร้านชา</p>
+                        <h3 id="net-tea" class="text-sm font-bold text-rose-500">฿0</h3>
+                    </div>
+                    <div class="bg-white/60 p-4 rounded-[2rem] border border-rose-50 text-center shadow-sm">
+                        <p class="text-[9px] text-gray-400 font-bold uppercase mb-1">งานลวด</p>
+                        <h3 id="net-flower" class="text-sm font-bold text-rose-500">฿0</h3>
+                    </div>
+                    <div class="bg-white/60 p-4 rounded-[2rem] border border-rose-50 text-center shadow-sm">
+                        <p class="text-[9px] text-gray-400 font-bold uppercase mb-1">ผลไม้</p>
+                        <h3 id="net-fruit" class="text-sm font-bold text-rose-500">฿0</h3>
+                    </div>
                 </div>
             </div>
 
@@ -190,8 +197,12 @@
     </nav>
 
 <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxxNecfEsN-JsI-yrUq8QJrdsUXUJq5psL9ZYzopocXaNeU_wZBzksDjZgBuymGFjlNrg/exec";
-    let db = { tea: { invest: [], sales: [], stock: [] }, flower: { invest: [], sales: [], stock: [] } };
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx1aX6kk7SnkvWLHXcQY7CQ_Kb9nSiHggNq4Achnh3jLlYhsny4qhd9iqVZGWlL-yPkwg/exec";
+    let db = { 
+    tea: { invest: [], sales: [], stock: [] }, 
+    flower: { invest: [], sales: [], stock: [] },
+    fruitset: { invest: [], sales: [], stock: [] } // ✅ เพิ่ม
+};
     let messageQueue = []; // คิวสำหรับสุ่มข้อความไม่ให้ซ้ำ
 
     const showDialog = (msg, isConfirm = false, autoClose = false) => {
@@ -349,73 +360,95 @@
     }
 
     function updateUI() {
-        const proj = document.getElementById('project-selector').value;
-        const monthInput = document.getElementById('month-filter');
-        const now = new Date();
-        
-        const body = document.getElementById('main-body');
-        const header = document.getElementById('header-bar');
-        const confirmBtn = document.getElementById('dialog-confirm');
+    const proj = document.getElementById('project-selector').value;
+    const monthInput = document.getElementById('month-filter');
+    const now = new Date();
+    
+    const body = document.getElementById('main-body');
+    const header = document.getElementById('header-bar');
+    const confirmBtn = document.getElementById('dialog-confirm');
 
-        if(proj === 'flower') {
-            body.className = 'theme-flower';
-            header.className = 'flower-gradient text-white p-6 rounded-b-[3.5rem] shadow-lg sticky top-0 z-50 transition-all';
-            confirmBtn.className = 'flex-1 py-3 rounded-2xl flower-gradient text-white font-bold shadow-lg shadow-indigo-200 active:scale-95 transition-all';
-        } else {
-            body.className = 'theme-tea';
-            header.className = 'pink-gradient text-white p-6 rounded-b-[3.5rem] shadow-lg sticky top-0 z-50 transition-all';
-            confirmBtn.className = 'flex-1 py-3 rounded-2xl pink-gradient text-white font-bold shadow-lg shadow-rose-200 active:scale-95 transition-all';
-        }
-
-        if (!monthInput.value) {
-            monthInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-        }
-        const [selectedYear, selectedMonth] = monthInput.value.split('-').map(Number);
-        const currentProject = db[proj] || { invest: [], sales: [], stock: [] };
-
-        const parseDate = (dStr) => {
-            const parts = String(dStr).split(/[\/\- ]/);
-            if (parts.length < 3) return { d: 0, m: 0, y: 0 };
-            let d = parseInt(parts[0]), m = parseInt(parts[1]), y = parseInt(parts[2]);
-            if (y > 2500) y -= 543;
-            return { d, m, y };
-        };
-
-        const mInv = currentProject.invest.filter(x => parseDate(x.date).m === selectedMonth && parseDate(x.date).y === selectedYear).reduce((s, i) => s + Number(i.price), 0);
-        const mSale = currentProject.sales.filter(x => parseDate(x.date).m === selectedMonth && parseDate(x.date).y === selectedYear).reduce((s, i) => s + Number(i.price), 0);
-        const dSale = currentProject.sales.filter(x => { const t = parseDate(x.date); return t.d === now.getDate() && t.m === (now.getMonth()+1) && t.y === now.getFullYear(); }).reduce((s, i) => s + Number(i.price), 0);
-        const dQty = currentProject.sales.filter(x => { const t = parseDate(x.date); return t.d === now.getDate() && t.m === (now.getMonth()+1) && t.y === now.getFullYear(); }).reduce((s, i) => s + Number(i.qty), 0);
-
-        document.getElementById('stat-profit').innerText = `฿${(mSale - mInv).toLocaleString()}`;
-        document.getElementById('daily-sales').innerText = `฿${dSale.toLocaleString()}`;
-        document.getElementById('daily-qty').innerText = `${dQty} ${proj === 'tea' ? 'แก้ว' : 'ชิ้น'}`;
-
-        const netTea = db.tea.sales.reduce((s,i)=>s+Number(i.price),0) - db.tea.invest.reduce((s,i)=>s+Number(i.price),0);
-        const netFlower = db.flower.sales.reduce((s,i)=>s+Number(i.price),0) - db.flower.invest.reduce((s,i)=>s+Number(i.price),0);
-        document.getElementById('net-tea').innerText = `฿${netTea.toLocaleString()}`;
-        document.getElementById('net-flower').innerText = `฿${netFlower.toLocaleString()}`;
-        document.getElementById('total-wallet').innerText = `฿${(netTea + netFlower).toLocaleString()}`;
-
-        const invList = document.getElementById('inventory-list');
-        invList.innerHTML = "";
-        currentProject.stock.forEach(item => {
-            const isLow = item.qty < 1;
-            invList.innerHTML += `
-            <div class="bg-white p-4 rounded-3xl border ${isLow ? 'border-red-200 shadow-red-50' : 'border-rose-100/50'} flex flex-col items-center gap-2 relative shadow-sm">
-                <button onclick="deleteItem('${item.name}')" class="absolute top-2 right-2 w-8 h-8 flex items-center justify-center text-red-500 active:scale-90 transition-transform">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                </button>
-                <span class="font-bold text-[12px] text-gray-600 truncate w-3/4 text-center mt-2">${item.name}</span>
-                <div class="text-3xl font-bold ${isLow ? 'stock-alert' : 'text-rose-500'} my-1">${item.qty}</div>
-                <div class="flex w-full gap-2 mt-1">
-                    <button onclick="adjustQty('${item.name}', -1)" class="flex-1 bg-gray-50 py-2 rounded-xl text-lg font-bold text-gray-300">-</button>
-                    <button onclick="adjustQty('${item.name}', 1)" class="flex-1 ${proj==='tea'?'bg-rose-400':'bg-indigo-400'} py-2 rounded-xl text-lg font-bold text-white shadow-md active:scale-95">+</button>
-                </div>
-            </div>`;
-        });
-        if(document.getElementById('page-history').classList.contains('active')) renderHistory();
+    // --- ส่วนที่ 1: จัดการธีมสี (เพิ่มร้านผลไม้) ---
+    if(proj === 'flower') {
+        body.className = 'theme-flower';
+        header.className = 'flower-gradient text-white p-6 rounded-b-[3.5rem] shadow-lg sticky top-0 z-50 transition-all';
+        confirmBtn.className = 'flex-1 py-3 rounded-2xl flower-gradient text-white font-bold shadow-lg shadow-indigo-200 active:scale-95 transition-all';
+    } else if(proj === 'fruitset') {
+        body.className = 'theme-fruit'; // ใช้สีเขียวที่เพิ่มไว้ใน CSS
+        header.className = 'bg-emerald-500 text-white p-6 rounded-b-[3.5rem] shadow-lg sticky top-0 z-50 transition-all';
+        confirmBtn.className = 'flex-1 py-3 rounded-2xl bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-200 active:scale-95 transition-all';
+    } else {
+        body.className = 'theme-tea';
+        header.className = 'pink-gradient text-white p-6 rounded-b-[3.5rem] shadow-lg sticky top-0 z-50 transition-all';
+        confirmBtn.className = 'flex-1 py-3 rounded-2xl pink-gradient text-white font-bold shadow-lg shadow-rose-200 active:scale-95 transition-all';
     }
 
+    if (!monthInput.value) {
+        monthInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }
+    const [selectedYear, selectedMonth] = monthInput.value.split('-').map(Number);
+    const currentProject = db[proj] || { invest: [], sales: [], stock: [] };
+
+    const parseDate = (dStr) => {
+        const parts = String(dStr).split(/[\/\- ]/);
+        if (parts.length < 3) return { d: 0, m: 0, y: 0 };
+        let d = parseInt(parts[0]), m = parseInt(parts[1]), y = parseInt(parts[2]);
+        if (y > 2500) y -= 543;
+        return { d, m, y };
+    };
+
+    // คำนวณรายเดือนและรายวัน
+    const mInv = currentProject.invest.filter(x => parseDate(x.date).m === selectedMonth && parseDate(x.date).y === selectedYear).reduce((s, i) => s + Number(i.price), 0);
+    const mSale = currentProject.sales.filter(x => parseDate(x.date).m === selectedMonth && parseDate(x.date).y === selectedYear).reduce((s, i) => s + Number(i.price), 0);
+    const dSale = currentProject.sales.filter(x => { const t = parseDate(x.date); return t.d === now.getDate() && t.m === (now.getMonth()+1) && t.y === now.getFullYear(); }).reduce((s, i) => s + Number(i.price), 0);
+    const dQty = currentProject.sales.filter(x => { const t = parseDate(x.date); return t.d === now.getDate() && t.m === (now.getMonth()+1) && t.y === now.getFullYear(); }).reduce((s, i) => s + Number(i.qty), 0);
+
+    document.getElementById('stat-profit').innerText = `฿${(mSale - mInv).toLocaleString()}`;
+    document.getElementById('daily-sales').innerText = `฿${dSale.toLocaleString()}`;
+    document.getElementById('daily-qty').innerText = `${dQty} ${proj === 'tea' ? 'แก้ว' : 'ชิ้น'}`;
+
+    // --- ส่วนที่ 2: คำนวณกำไรสะสม (เพิ่ม fruitset) ---
+    const netTea = db.tea.sales.reduce((s,i)=>s+Number(i.price),0) - db.tea.invest.reduce((s,i)=>s+Number(i.price),0);
+    const netFlower = db.flower.sales.reduce((s,i)=>s+Number(i.price),0) - db.flower.invest.reduce((s,i)=>s+Number(i.price),0);
+    const netFruit = db.fruitset.sales.reduce((s,i)=>s+Number(i.price),0) - db.fruitset.invest.reduce((s,i)=>s+Number(i.price),0);
+
+    document.getElementById('net-tea').innerText = `฿${netTea.toLocaleString()}`;
+    document.getElementById('net-flower').innerText = `฿${netFlower.toLocaleString()}`;
+    
+    // ตรวจสอบว่ามี element net-fruit หรือไม่ก่อนใส่ค่า
+    if(document.getElementById('net-fruit')) {
+        document.getElementById('net-fruit').innerText = `฿${netFruit.toLocaleString()}`;
+    }
+    
+    // ยอดรวมกระเป๋าตังค์ทั้งหมด (รวม 3 ร้าน)
+    document.getElementById('total-wallet').innerText = `฿${(netTea + netFlower + netFruit).toLocaleString()}`;
+
+    // เรนเดอร์รายการสต็อก
+    const invList = document.getElementById('inventory-list');
+    invList.innerHTML = "";
+    currentProject.stock.forEach(item => {
+        const isLow = item.qty < 1;
+        // ปรับสีปุ่มตามโปรเจกต์
+        let btnColor = 'bg-rose-400';
+        if(proj === 'flower') btnColor = 'bg-indigo-400';
+        if(proj === 'fruitset') btnColor = 'bg-emerald-500';
+
+        invList.innerHTML += `
+        <div class="bg-white p-4 rounded-3xl border ${isLow ? 'border-red-200 shadow-red-50' : 'border-rose-100/50'} flex flex-col items-center gap-2 relative shadow-sm">
+            <button onclick="deleteItem('${item.name}')" class="absolute top-2 right-2 w-8 h-8 flex items-center justify-center text-red-500 active:scale-90 transition-transform">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+            </button>
+            <span class="font-bold text-[12px] text-gray-600 truncate w-3/4 text-center mt-2">${item.name}</span>
+            <div class="text-3xl font-bold ${isLow ? 'stock-alert' : 'text-rose-500'} my-1">${item.qty}</div>
+            <div class="flex w-full gap-2 mt-1">
+                <button onclick="adjustQty('${item.name}', -1)" class="flex-1 bg-gray-50 py-2 rounded-xl text-lg font-bold text-gray-300">-</button>
+                <button onclick="adjustQty('${item.name}', 1)" class="flex-1 ${btnColor} py-2 rounded-xl text-lg font-bold text-white shadow-md active:scale-95">+</button>
+            </div>
+        </div>`;
+    });
+    
+    if(document.getElementById('page-history').classList.contains('active')) renderHistory();
+}
     function adjustQty(itemName, change) {
         const proj = document.getElementById('project-selector').value;
         const item = db[proj].stock.find(i => i.name === itemName);
