@@ -179,8 +179,21 @@
             </div>
         </section>
 
-        <section id="page-history" class="page space-y-3">
-            <div id="log-list" class="space-y-3"></div>
+        <section id="page-history" class="page space-y-4">
+            <div class="bg-white p-3 rounded-[2rem] border border-rose-100 shadow-sm flex gap-2">
+                <button onclick="switchHistoryTab('sales')" id="tab-sales" class="flex-1 py-3 text-xs font-bold rounded-[1.5rem] bg-rose-400 text-white shadow-md transition-all">
+                    🛍️ ประวัติยอดขาย
+                </button>
+                <button onclick="switchHistoryTab('costs')" id="tab-costs" class="flex-1 py-3 text-xs font-bold rounded-[1.5rem] bg-gray-50 text-gray-400 hover:bg-gray-100 transition-all">
+                    📉 ประวัติต้นทุน
+                </button>
+            </div>
+
+            <div id="log-sales-list" class="space-y-3">
+                </div>
+
+            <div id="log-costs-list" class="space-y-3 hidden">
+                </div>
         </section>
     </main>
 
@@ -471,24 +484,45 @@
         updateUI();
     }
 
-    function renderHistory() {
-        const proj = document.getElementById('project-selector').value;
-        const monthInput = document.getElementById('month-filter');
-        const [selYear, selMonth] = monthInput.value.split('-').map(Number);
-        const list = document.getElementById('log-list');
-        list.innerHTML = "";
-        const all = [...db[proj].invest.map(i => ({ ...i, t: 'I' })), ...db[proj].sales.map(s => ({ ...s, t: 'S' }))]
-            .filter(x => { const d = String(x.date).split(/[\/\- ]/); let y = parseInt(d[2]); if(y>2500) y-=543; return parseInt(d[1])===selMonth && y===selYear; })
-            .sort((a, b) => b.id - a.id);
-        if (all.length === 0) { list.innerHTML = `<div class="text-center p-12 text-gray-300 text-sm">ไม่มีประวัติ</div>`; return; }
-        all.forEach(x => {
-            const isS = x.t === 'S';
-            list.innerHTML += `
-            <div class="bg-white p-5 rounded-[2rem] flex justify-between items-center border-l-4 ${isS ? 'border-rose-400' : 'border-gray-200'} shadow-sm">
-                <div><p class="font-bold text-sm text-gray-700">${x.name} ${x.qty ? 'x'+x.qty : ''}</p><p class="text-[10px] text-gray-300">📅 ${x.date}</p></div>
+   function renderHistory() {
+    const proj = document.getElementById('project-selector').value;
+    const monthInput = document.getElementById('month-filter');
+    const [selYear, selMonth] = monthInput.value.split('-').map(Number);
+    
+    // 1. เปลี่ยนมาดึงกล่องรายการแยกตามหมวดหมู่
+    const salesList = document.getElementById('log-sales-list');
+    const costsList = document.getElementById('log-costs-list');
+    
+    // เคลียร์ข้อมูลเก่าในกล่องออกทั้งสองกล่อง
+    salesList.innerHTML = "";
+    costsList.innerHTML = "";
+
+    // 2. ดึงข้อมูลและจัดการ Filter สภาพเวลาเหมือนเดิม (แปลงปี พ.ศ. เป็น ค.ศ. เผื่อไว้แล้ว)
+    const filterByMonth = (x) => {
+        const d = String(x.date).split(/[\/\- ]/);
+        let y = parseInt(d[2]);
+        if (y > 2500) y -= 543;
+        return parseInt(d[1]) === selMonth && y === selYear;
+    };
+
+    // แยกข้อมูลยอดขาย (Sales) และ ต้นทุน (Invest) ออกจากกันอย่างชัดเจน
+    const salesData = [...db[proj].sales].filter(filterByMonth).sort((a, b) => b.id - a.id);
+    const costsData = [...db[proj].invest].filter(filterByMonth).sort((a, b) => b.id - a.id);
+
+    // 3. Render ฝั่งยอดขาย (Sales)
+    if (salesData.length === 0) {
+        salesList.innerHTML = `<div class="text-center p-12 text-gray-300 text-sm">ไม่มีประวัติตอนนี้</div>`;
+    } else {
+        salesData.forEach(x => {
+            salesList.innerHTML += `
+            <div class="bg-white p-5 rounded-[2rem] flex justify-between items-center border-l-4 border-rose-400 shadow-sm">
+                <div>
+                    <p class="font-bold text-sm text-gray-700">${x.name} ${x.qty ? 'x'+x.qty : ''}</p>
+                    <p class="text-[10px] text-gray-300">📅 ${x.date}</p>
+                </div>
                 <div class="flex items-center gap-4">
-                    <p class="font-bold text-lg ${isS ? 'text-rose-500' : 'text-gray-400'}">฿${Number(x.price).toLocaleString()}</p>
-                    <button onclick="deleteRecord('${isS ? 'Sales' : 'Invest'}', '${x.id}')" class="text-red-500 active:scale-90 transition-transform">
+                    <p class="font-bold text-lg text-rose-500">฿${Number(x.price).toLocaleString()}</p>
+                    <button onclick="deleteRecord('Sales', '${x.id}')" class="text-red-500 active:scale-90 transition-transform">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                     </button>
                 </div>
@@ -496,6 +530,53 @@
         });
     }
 
+    // 4. Render ฝั่งต้นทุน (Costs)
+    if (costsData.length === 0) {
+        costsList.innerHTML = `<div class="text-center p-12 text-gray-300 text-sm">ไม่มีประวัติต้นทุน</div>`;
+    } else {
+        costsData.forEach(x => {
+            costsList.innerHTML += `
+            <div class="bg-white p-5 rounded-[2rem] flex justify-between items-center border-l-4 border-gray-200 shadow-sm">
+                <div>
+                    <p class="font-bold text-sm text-gray-700">${x.name}</p>
+                    <p class="text-[10px] text-gray-300">📅 ${x.date}</p>
+                </div>
+                <div class="flex items-center gap-4">
+                    <p class="font-bold text-lg text-gray-400">฿${Number(x.price).toLocaleString()}</p>
+                    <button onclick="deleteRecord('Invest', '${x.id}')" class="text-red-500 active:scale-90 transition-transform">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                </div>
+            </div>`;
+        });
+    }
+}
+
+// คัดลอกฟังก์ชันนี้ไปวางเพิ่มในแท็ก <script> ของคุณได้เลย
+function switchHistoryTab(type) {
+    const tabSales = document.getElementById('tab-sales');
+    const tabCosts = document.getElementById('tab-costs');
+    const listSales = document.getElementById('log-sales-list');
+    const listCosts = document.getElementById('log-costs-list');
+
+    if (type === 'sales') {
+        // ไฮไลท์ปุ่มยอดขายเป็นสีชมพู / ปรับปุ่มต้นทุนเป็นสีเทา
+        tabSales.className = "flex-1 py-3 text-xs font-bold rounded-[1.5rem] bg-rose-400 text-white shadow-md transition-all";
+        tabCosts.className = "flex-1 py-3 text-xs font-bold rounded-[1.5rem] bg-gray-50 text-gray-400 hover:bg-gray-100 transition-all";
+        
+        // แสดงรายการยอดขาย ซ่อนรายการต้นทุน
+        listSales.classList.remove('hidden');
+        listCosts.classList.add('hidden');
+    } else {
+        // ไฮไลท์ปุ่มต้นทุนเป็นสีเทาเข้ม / ปรับปุ่มยอดขายเป็นสีเทาอ่อน
+        tabSales.className = "flex-1 py-3 text-xs font-bold rounded-[1.5rem] bg-gray-50 text-gray-400 hover:bg-gray-100 transition-all";
+        tabCosts.className = "flex-1 py-3 text-xs font-bold rounded-[1.5rem] bg-gray-800 text-white shadow-md transition-all";
+        
+        // แสดงรายการต้นทุน ซ่อนรายการยอดขาย
+        listSales.classList.add('hidden');
+        listCosts.classList.remove('hidden');
+    }
+}
     async function deleteRecord(type, id) {
         const confirmed = await confirm(`ลบรายการนี้?`);
         if (!confirmed) return;
