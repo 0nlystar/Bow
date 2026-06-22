@@ -179,7 +179,18 @@
             </div>
         </section>
 
-        <section id="page-history" class="page space-y-4">
+      <section id="page-history" class="page space-y-4">
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-rose-50/60 p-4 rounded-[2rem] border border-rose-100 text-center shadow-sm">
+                    <p class="text-[9px] text-rose-400 font-bold uppercase mb-1 tracking-wider">ยอดขายรวม (เดือนนี้)</p>
+                    <h3 id="history-total-sales" class="text-xl font-bold text-rose-500">฿0</h3>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-[2rem] border border-gray-100 text-center shadow-sm">
+                    <p class="text-[9px] text-gray-400 font-bold uppercase mb-1 tracking-wider">ต้นทุนรวม (เดือนนี้)</p>
+                    <h3 id="history-total-costs" class="text-xl font-bold text-gray-600">฿0</h3>
+                </div>
+            </div>
+
             <div class="bg-white p-3 rounded-[2rem] border border-rose-100 shadow-sm flex gap-2">
                 <button onclick="switchHistoryTab('sales')" id="tab-sales" class="flex-1 py-3 text-xs font-bold rounded-[1.5rem] bg-rose-400 text-white shadow-md transition-all">
                     🛍️ ประวัติยอดขาย
@@ -189,11 +200,9 @@
                 </button>
             </div>
 
-            <div id="log-sales-list" class="space-y-3">
-                </div>
+            <div id="log-sales-list" class="space-y-3"></div>
 
-            <div id="log-costs-list" class="space-y-3 hidden">
-                </div>
+            <div id="log-costs-list" class="space-y-3 hidden"></div>
         </section>
     </main>
 
@@ -493,6 +502,10 @@
     const salesList = document.getElementById('log-sales-list');
     const costsList = document.getElementById('log-costs-list');
     
+    // ดึงกล่องแสดงยอดรวมสรุป (ที่เพิ่มเข้ามาใหม่)
+    const historyTotalSales = document.getElementById('history-total-sales');
+    const historyTotalCosts = document.getElementById('history-total-costs');
+    
     // เคลียร์ข้อมูลเก่าในกล่องออกทั้งสองกล่อง
     salesList.innerHTML = "";
     costsList.innerHTML = "";
@@ -508,6 +521,23 @@
     // แยกข้อมูลยอดขาย (Sales) และ ต้นทุน (Invest) ออกจากกันอย่างชัดเจน
     const salesData = [...db[proj].sales].filter(filterByMonth).sort((a, b) => b.id - a.id);
     const costsData = [...db[proj].invest].filter(filterByMonth).sort((a, b) => b.id - a.id);
+
+    // --- ส่วนคำนวณยอดรวมประจำเดือน (บวกตรงๆ ตามราคารายการ ไม่คูณซ้ำ) ---
+    let totalSalesSum = 0;
+    let totalCostsSum = 0;
+
+    salesData.forEach(x => {
+        totalSalesSum += (Number(x.price) || 0);
+    });
+
+    costsData.forEach(x => {
+        totalCostsSum += (Number(x.price) || 0);
+    });
+
+    // แสดงยอดรวมบนหน้าจอ (เช็คเผื่อถ้ามีกล่องใน HTML ค่อยแสดงผลเพื่อไม่ให้เกิด Error)
+    if (historyTotalSales) historyTotalSales.innerText = `฿${totalSalesSum.toLocaleString()}`;
+    if (historyTotalCosts) historyTotalCosts.innerText = `฿${totalCostsSum.toLocaleString()}`;
+    // -----------------------------------------------------------
 
     // 3. Render ฝั่งยอดขาย (Sales)
     if (salesData.length === 0) {
@@ -551,7 +581,6 @@
         });
     }
 }
-
 // คัดลอกฟังก์ชันนี้ไปวางเพิ่มในแท็ก <script> ของคุณได้เลย
 function switchHistoryTab(type) {
     const tabSales = document.getElementById('tab-sales');
